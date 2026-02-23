@@ -60,8 +60,11 @@ function extractPlayers(raw) {
       const proTeamId = playerData.proTeamId ?? 0;
       const eligibleSlots = playerData.eligibleSlots ?? entry.playerPoolEntry?.eligibleSlots ?? [];
 
-      // Injury status: only treat 'OUT' as injured per spec
-      const injuryStatus = poolEntry.injuryStatus ?? playerData.injuryStatus ?? null;
+      // Injury status: only treat 'OUT' (or its variants 'O', 'IL') as injured per spec
+      let injuryStatus = poolEntry.injuryStatus ?? playerData.injuryStatus ?? null;
+      if (injuryStatus === 'O' || injuryStatus === 'IL') {
+        injuryStatus = 'OUT';
+      }
 
       // Projected points from onTeamRoster stats (season average)
       let projectedPoints = 0;

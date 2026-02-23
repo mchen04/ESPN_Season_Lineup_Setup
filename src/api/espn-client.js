@@ -24,7 +24,7 @@ async function espnFetch(url, auth, options = {}) {
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    throw new Error(`ESPN API ${res.status}: ${res.statusText} — ${url}\n${text.slice(0, 200)}`);
+    throw new Error(`ESPN API ${res.status}: ${res.statusText} — ${url}\n${text.slice(0, 500)}`);
   }
 
   return res.json();

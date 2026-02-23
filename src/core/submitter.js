@@ -45,6 +45,12 @@ export async function runSeasonSetup({ leagueId, teamId, seasonYear, currentScor
     league.finalScoringPeriodId
   );
 
+  // Initialize tracked slot states
+  const currentSlots = new Map();
+  for (const p of [...activePlayers, ...irPlayers]) {
+    currentSlots.set(p.playerId, p.lineupSlotId);
+  }
+
   const total = gameDays.length;
   let submitted = 0;
   const errors = [];
@@ -59,7 +65,9 @@ export async function runSeasonSetup({ leagueId, teamId, seasonYear, currentScor
         irPlayers,
         playingTeamIds,
         scoringPeriodId,
-        teamId
+        teamId,
+        currentScoringPeriodId,
+        currentSlots
       );
 
       if (items.length === 0) {
@@ -80,6 +88,11 @@ export async function runSeasonSetup({ leagueId, teamId, seasonYear, currentScor
 
       await submitLineup(leagueId, seasonYear, auth, payload);
       submitted++;
+
+      // Update local state with the new slot assignments
+      for (const item of items) {
+        currentSlots.set(item.playerId, item.toLineupSlotId);
+      }
     } catch (err) {
       console.error(`[Submitter] Error on period ${scoringPeriodId}:`, err);
       errors.push(`Period ${scoringPeriodId}: ${err.message}`);
