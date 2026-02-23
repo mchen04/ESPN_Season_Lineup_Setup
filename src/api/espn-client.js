@@ -40,6 +40,15 @@ export async function fetchLeague(leagueId, seasonYear, auth) {
 }
 
 /**
+ * Fetch the exact roster state for a specific scoring period.
+ * This guarantees we know exactly what is in SLOT.IR on future days.
+ */
+export async function fetchRosterForPeriod(leagueId, seasonYear, scoringPeriodId, auth) {
+  const url = `${BASE}/${seasonYear}/segments/0/leagues/${leagueId}?scoringPeriodId=${scoringPeriodId}&view=mRoster`;
+  return espnFetch(url, auth);
+}
+
+/**
  * Fetch player projection data.
  * Uses kona_player_info view with a filter for all rostered players.
  */

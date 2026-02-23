@@ -5,7 +5,7 @@
  * optimizes the lineup and POSTs it to ESPN with a 300ms delay between requests.
  */
 
-import { fetchLeague, fetchProSchedule, submitLineup } from '../api/espn-client.js';
+import { fetchLeague, fetchProSchedule, submitLineup, fetchRosterForPeriod } from '../api/espn-client.js';
 import { normalizeLeague } from '../api/normalizer.js';
 import { buildRemainingGameDays } from './scheduler.js';
 import { getIRPlayerIds } from './ir-assigner.js';
@@ -45,11 +45,7 @@ export async function runSeasonSetup({ leagueId, teamId, seasonYear, currentScor
     league.finalScoringPeriodId
   );
 
-  // Initialize tracked slot states
-  const currentSlots = new Map();
-  for (const p of [...activePlayers, ...irPlayers]) {
-    currentSlots.set(p.playerId, p.lineupSlotId);
-  }
+  // (Removed manual currentSlots initialization. We will fetch dynamically per day)
 
   const total = gameDays.length;
   let submitted = 0;
@@ -60,6 +56,17 @@ export async function runSeasonSetup({ leagueId, teamId, seasonYear, currentScor
     const { scoringPeriodId, playingTeamIds } = gameDays[i];
 
     try {
+      // Fetch exact roster for this specific period to eliminate any desyncs
+      const periodRosterRaw = await fetchRosterForPeriod(leagueId, seasonYear, scoringPeriodId, auth);
+      const teamEntry = periodRosterRaw.teams.find(t => t.id === teamId);
+
+      const currentSlots = new Map();
+      if (teamEntry && teamEntry.roster && teamEntry.roster.entries) {
+        for (const entry of teamEntry.roster.entries) {
+          currentSlots.set(entry.playerId, entry.lineupSlotId);
+        }
+      }
+
       const items = optimizeLineup(
         activePlayers,
         irPlayers,
@@ -89,10 +96,6 @@ export async function runSeasonSetup({ leagueId, teamId, seasonYear, currentScor
       await submitLineup(leagueId, seasonYear, auth, payload);
       submitted++;
 
-      // Update local state with the new slot assignments
-      for (const item of items) {
-        currentSlots.set(item.playerId, item.toLineupSlotId);
-      }
     } catch (err) {
       if (err.message.includes('TRAN_LINEUP_LOCKED')) {
         console.warn(`[Submitter] Period ${scoringPeriodId} partially locked (${err.message}). Continuing...`);
