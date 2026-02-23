@@ -9,6 +9,14 @@ import { buildRemainingGameDays } from '../core/scheduler.js';
 import { assignIRSlots } from '../core/ir-assigner.js';
 import { runSeasonSetup } from '../core/submitter.js';
 
+let progressPort = null;
+chrome.runtime.onConnect.addListener(port => {
+  if (port.name === 'lineup-progress') {
+    progressPort = port;
+    port.onDisconnect.addListener(() => { progressPort = null; });
+  }
+});
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   handleMessage(msg).then(sendResponse).catch(err => {
     console.error('[SW] Unhandled error:', err);
@@ -65,16 +73,6 @@ async function getPreview({ leagueId, seasonYear, auth }) {
 }
 
 async function runSetup({ leagueId, teamId, seasonYear, currentScoringPeriodId, auth }) {
-  const portName = 'lineup-progress';
-
-  let progressPort = null;
-  chrome.runtime.onConnect.addListener(function onConnect(port) {
-    if (port.name === portName) {
-      progressPort = port;
-      chrome.runtime.onConnect.removeListener(onConnect);
-    }
-  });
-
   const result = await runSeasonSetup({
     leagueId,
     teamId,

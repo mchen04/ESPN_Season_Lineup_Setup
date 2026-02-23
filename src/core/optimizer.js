@@ -23,7 +23,7 @@ import { ACTIVE_SLOTS, SLOT, isEligibleForSlot } from '../utils/slot-utils.js';
  * @param {number} teamId
  * @returns {LineupItem[]}
  */
-export function optimizeLineup(activePlayers, irPlayers, playingTeamIds, scoringPeriodId, teamId, currentScoringPeriodId, currentSlots = new Map()) {
+export function optimizeLineup(activePlayers, irPlayers, playingTeamIds, scoringPeriodId, teamId, currentScoringPeriodId, currentSlots = new Map(), activeSlots = ACTIVE_SLOTS) {
   // Annotate each active player with tier
   const annotated = activePlayers.map(p => ({
     ...p,
@@ -35,11 +35,11 @@ export function optimizeLineup(activePlayers, irPlayers, playingTeamIds, scoring
     a.tier !== b.tier ? a.tier - b.tier : b.projectedPoints - a.projectedPoints
   );
 
-  const assigned = new Map(); // slotId → player
+  const assignments = []; // { slotId, player } — array so multiple same-slotId entries survive
   const usedPlayerIds = new Set();
 
   // Greedily fill active slots
-  for (const slotId of ACTIVE_SLOTS) {
+  for (const slotId of activeSlots) {
     for (const player of annotated) {
       if (usedPlayerIds.has(player.playerId)) continue;
 
@@ -50,7 +50,7 @@ export function optimizeLineup(activePlayers, irPlayers, playingTeamIds, scoring
       }
 
       if (!isEligibleForSlot(player, slotId)) continue;
-      assigned.set(slotId, player);
+      assignments.push({ slotId, player });
       usedPlayerIds.add(player.playerId);
       break;
     }
@@ -60,7 +60,7 @@ export function optimizeLineup(activePlayers, irPlayers, playingTeamIds, scoring
   const items = [];
 
   // Active slot assignments
-  for (const [toSlotId, player] of assigned) {
+  for (const { slotId: toSlotId, player } of assignments) {
     items.push({
       playerId: player.playerId,
       type: 'LINEUP',
@@ -102,7 +102,12 @@ export function optimizeLineup(activePlayers, irPlayers, playingTeamIds, scoring
   }
 
   // Filter out NO-OP moves to prevent TRAN_INVALID_SCORINGPERIOD_NOT_CURRENT on future days
-  return items.filter(item => item.fromLineupSlotId !== item.toLineupSlotId);
+  const filtered = items.filter(item => item.fromLineupSlotId !== item.toLineupSlotId);
+  if (scoringPeriodId <= currentScoringPeriodId + 1) {
+    console.log(`[Optimizer] Period ${scoringPeriodId} pre-filter items (${items.length}):`, JSON.stringify(items));
+    console.log(`[Optimizer] Period ${scoringPeriodId} post-filter items (${filtered.length}):`, JSON.stringify(filtered));
+  }
+  return filtered;
 }
 
 function computeTier(player, playingTeamIds) {

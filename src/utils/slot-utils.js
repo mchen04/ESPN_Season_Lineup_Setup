@@ -39,6 +39,23 @@ export const ACTIVE_SLOTS = [
   SLOT.UTIL,
 ];
 
+/**
+ * Build the active slot array from league roster slot counts.
+ * Repeats each slot ID by its count (e.g. 3 UTIL slots → three SLOT.UTIL entries).
+ *
+ * @param {object} rosterSlots  — lineupSlotCounts from ESPN settings (string or number keys)
+ * @returns {number[]}
+ */
+export function buildActiveSlots(rosterSlots) {
+  const activeSlotTypes = [SLOT.PG, SLOT.SG, SLOT.SF, SLOT.PF, SLOT.C, SLOT.G, SLOT.F, SLOT.UTIL];
+  const result = [];
+  for (const slotId of activeSlotTypes) {
+    const count = Number(rosterSlots[slotId] ?? rosterSlots[String(slotId)] ?? 0);
+    for (let i = 0; i < count; i++) result.push(slotId);
+  }
+  return result;
+}
+
 /** Returns true if the player is eligible for the given slot. */
 export function isEligibleForSlot(player, slotId) {
   return player.eligibleSlots.includes(slotId);

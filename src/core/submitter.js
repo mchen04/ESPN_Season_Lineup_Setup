@@ -10,6 +10,7 @@ import { normalizeLeague } from '../api/normalizer.js';
 import { buildRemainingGameDays } from './scheduler.js';
 import { getIRPlayerIds } from './ir-assigner.js';
 import { optimizeLineup } from './optimizer.js';
+import { buildActiveSlots } from '../utils/slot-utils.js';
 
 const DELAY_MS = 300;
 
@@ -31,6 +32,8 @@ export async function runSeasonSetup({ leagueId, teamId, seasonYear, currentScor
   ]);
 
   const { league, players } = normalizeLeague(leagueRaw);
+  const activeSlots = buildActiveSlots(league.rosterSlots);
+  console.log('[Submitter] rosterSlots:', league.rosterSlots, 'activeSlots:', activeSlots);
   const myPlayers = players.filter(p => p.teamId === teamId);
 
   // 2. Assign IR slots once (static for the whole run)
@@ -66,6 +69,12 @@ export async function runSeasonSetup({ leagueId, teamId, seasonYear, currentScor
           currentSlots.set(entry.playerId, entry.lineupSlotId);
         }
       }
+      if (scoringPeriodId === currentScoringPeriodId + 1) {
+        const sample = teamEntry?.roster?.entries?.[0];
+        console.log('[Submitter] Period 126 sample entry keys:', sample ? Object.keys(sample) : null);
+        console.log('[Submitter] Period 126 sample entry.playerId:', sample?.playerId, 'entry.playerPoolEntry?.player?.id:', sample?.playerPoolEntry?.player?.id);
+        console.log('[Submitter] currentSlots size:', currentSlots.size, 'first few:', [...currentSlots.entries()].slice(0, 3));
+      }
 
       const items = optimizeLineup(
         activePlayers,
@@ -74,9 +83,11 @@ export async function runSeasonSetup({ leagueId, teamId, seasonYear, currentScor
         scoringPeriodId,
         teamId,
         currentScoringPeriodId,
-        currentSlots
+        currentSlots,
+        activeSlots
       );
 
+      console.log(`[Submitter] Period ${scoringPeriodId}: ${items.length} items`, items.slice(0, 3));
       if (items.length === 0) {
         // Nothing to submit for this day
         submitted++;
