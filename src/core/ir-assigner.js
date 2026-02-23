@@ -21,8 +21,17 @@ import { SLOT } from '../utils/slot-utils.js';
 export function assignIRSlots(players, irCount) {
   const injured = players.filter(p => p.injuryStatus === 'OUT');
 
-  // Sort: indefinitely out (null) first, then by return date desc (latest first)
+  // Sort:
+  // 1. Players currently in IR stay in IR
+  // 2. indefinitely out (null) first
+  // 3. by return date desc (latest first)
   const sorted = [...injured].sort((a, b) => {
+    const aInIR = a.lineupSlotId === SLOT.IR;
+    const bInIR = b.lineupSlotId === SLOT.IR;
+    if (aInIR !== bInIR) {
+      return aInIR ? -1 : 1;
+    }
+
     if (!a.estimatedReturnDate && !b.estimatedReturnDate) return 0;
     if (!a.estimatedReturnDate) return -1; // null → sort to front (longest out)
     if (!b.estimatedReturnDate) return 1;
