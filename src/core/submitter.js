@@ -84,9 +84,11 @@ export async function runSeasonSetup({ leagueId, teamId, seasonYear, currentScor
         continue;
       }
 
+      const isFuture = scoringPeriodId > currentScoringPeriodId;
       const payload = {
+        isLeagueManager: false,
         teamId,
-        type: 'LINEUP',
+        type: isFuture ? 'FUTURE_ROSTER' : 'LINEUP',
         memberId: auth.swid,
         scoringPeriodId,
         executionType: 'EXECUTE',
