@@ -109,6 +109,11 @@ async function startSetup() {
 
     if (response.ok) {
       showDone(response.submitted, response.skipped || 0, response.errors || []);
+      // Reload the ESPN page so the updated lineup is visible immediately
+      setTimeout(async () => {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab?.id) chrome.tabs.reload(tab.id);
+      }, 1500);
     } else {
       showError(response.error || 'Lineup setup failed.');
     }
