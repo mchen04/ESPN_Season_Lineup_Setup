@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESPN Season Lineup Setup</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <div class="logo">ESPN</div>
+    <h1>Season Lineup Setup</h1>
+  </header>
+
+  <!-- STATE: loading -->
+  <div id="state-loading" class="state">
+    <div class="spinner"></div>
+    <p>Loading roster...</p>
+  </div>
+
+  <!-- STATE: error -->
+  <div id="state-error" class="state hidden">
+    <div class="error-icon">⚠</div>
+    <p id="error-message">An error occurred.</p>
+  </div>
+
+  <!-- STATE: preview -->
+  <div id="state-preview" class="state hidden">
+    <div class="summary">
+      <div class="summary-row">
+        <span class="label">Team</span>
+        <span id="preview-team-name" class="value">—</span>
+      </div>
+      <div class="summary-row">
+        <span class="label">Game days remaining</span>
+        <span id="preview-game-days" class="value">—</span>
+      </div>
+    </div>
+
+    <div id="ir-section">
+      <h2>IR Assignments</h2>
+      <div id="ir-list" class="player-list"></div>
+    </div>
+
+    <div id="injured-bench-section" class="hidden">
+      <h2>Injured (Active Bench)</h2>
+      <div id="injured-bench-list" class="player-list"></div>
+    </div>
+
+    <button id="btn-run" class="btn-primary">Set Season Lineup</button>
+  </div>
+
+  <!-- STATE: submitting -->
+  <div id="state-submitting" class="state hidden">
+    <p id="progress-label">Day 0 of 0...</p>
+    <div class="progress-bar">
+      <div id="progress-fill" class="progress-fill"></div>
+    </div>
+    <p class="hint">Please keep this popup open.</p>
+  </div>
+
+  <!-- STATE: done -->
+  <div id="state-done" class="state hidden">
+    <div class="done-icon">✓</div>
+    <p id="done-message">Lineup set successfully.</p>
+    <p id="done-errors" class="error-text hidden"></p>
+    <button id="btn-rerun" class="btn-secondary">Re-run</button>
+  </div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>
