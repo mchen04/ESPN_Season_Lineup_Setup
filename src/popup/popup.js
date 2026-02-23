@@ -7,7 +7,10 @@
 
 import { slotName, SLOT } from '../utils/slot-utils.js';
 
-const SEASON_YEAR = 2025; // NBA 2024-25 season
+// NBA season ends in the year after it starts (Oct → June).
+// ESPN identifies seasons by their ending year.
+const _now = new Date();
+const SEASON_YEAR = _now.getMonth() >= 9 ? _now.getFullYear() + 1 : _now.getFullYear();
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const states = {
@@ -195,11 +198,7 @@ async function readAuth() {
     throw new Error('Not logged in to ESPN. Please log in at espn.com first.');
   }
 
-  // SWID is stored as {GUID} — keep the braces for the cookie but strip for memberId
-  const rawSwid = swidCookie.value;
-  const swid = rawSwid.startsWith('{') ? rawSwid.slice(1, -1) : rawSwid;
-
-  return { espnS2: s2Cookie.value, swid };
+  return { espnS2: s2Cookie.value, swid: swidCookie.value };
 }
 
 function getCookie(url, name) {

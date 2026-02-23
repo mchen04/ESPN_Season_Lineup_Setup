@@ -1,30 +1,30 @@
 /**
- * ESPN NBA lineup slot IDs and eligibility helpers.
+ * ESPN Fantasy Basketball (FBA) lineup slot IDs and eligibility helpers.
  *
- * Slot IDs:
+ * Slot IDs (basketball — different from football):
  *   PG   = 0
- *   G    = 1
- *   SG   = 2
- *   SF   = 4
- *   F    = 5
- *   PF   = 6
- *   C    = 12
- *   UTIL = 17
- *   BENCH= 20
- *   IR   = 21
+ *   SG   = 1
+ *   SF   = 2
+ *   PF   = 3
+ *   C    = 4
+ *   G    = 5   (PG/SG swing)
+ *   F    = 6   (SF/PF swing)
+ *   UTIL = 11
+ *   BENCH= 12
+ *   IR   = 13
  */
 
 export const SLOT = {
   PG: 0,
-  G: 1,
-  SG: 2,
-  SF: 4,
-  F: 5,
-  PF: 6,
-  C: 12,
-  UTIL: 17,
-  BENCH: 20,
-  IR: 21,
+  SG: 1,
+  SF: 2,
+  PF: 3,
+  C: 4,
+  G: 5,
+  F: 6,
+  UTIL: 11,
+  BENCH: 12,
+  IR: 13,
 };
 
 /** Active (starting) slot IDs in fill order. */
@@ -48,12 +48,12 @@ export function isEligibleForSlot(player, slotId) {
 export function slotName(slotId) {
   const names = {
     [SLOT.PG]: 'PG',
-    [SLOT.G]: 'G',
     [SLOT.SG]: 'SG',
     [SLOT.SF]: 'SF',
-    [SLOT.F]: 'F',
     [SLOT.PF]: 'PF',
     [SLOT.C]: 'C',
+    [SLOT.G]: 'G',
+    [SLOT.F]: 'F',
     [SLOT.UTIL]: 'UTIL',
     [SLOT.BENCH]: 'Bench',
     [SLOT.IR]: 'IR',

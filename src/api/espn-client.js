@@ -3,7 +3,8 @@
  * All requests are made from the service worker (cross-origin permitted via host_permissions).
  */
 
-const BASE = 'https://fantasy.espn.com/apis/v3/games/fba/seasons';
+const BASE = 'https://lm-api-reads.fantasy.espn.com/apis/v3/games/fba/seasons';
+const WRITE_BASE = 'https://lm-api-writes.fantasy.espn.com/apis/v3/games/fba/seasons';
 
 /**
  * Core fetch wrapper with ESPN auth headers.
@@ -19,7 +20,7 @@ async function espnFetch(url, auth, options = {}) {
     ...(options.headers || {}),
   };
 
-  const res = await fetch(url, { ...options, headers, credentials: 'include' });
+  const res = await fetch(url, { ...options, headers });
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -72,7 +73,7 @@ export async function fetchProSchedule(leagueId, seasonYear, auth) {
  * @param {object} payload  — full transaction body
  */
 export async function submitLineup(leagueId, seasonYear, auth, payload) {
-  const url = `${BASE}/${seasonYear}/segments/0/leagues/${leagueId}/transactions/`;
+  const url = `${WRITE_BASE}/${seasonYear}/segments/0/leagues/${leagueId}/transactions/`;
   return espnFetch(url, auth, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

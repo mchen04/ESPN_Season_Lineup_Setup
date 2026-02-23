@@ -47,8 +47,10 @@ async function getPreview({ leagueId, seasonYear, auth }) {
   const irAssignments = assignIRSlots(myPlayers, league.irSlotCount);
 
   const teamEntry = raw.teams.find(t => t.id === teamId);
+  console.log('[SW] teamEntry keys:', teamEntry ? Object.keys(teamEntry) : null);
+  console.log('[SW] teamEntry name fields:', teamEntry ? { location: teamEntry.location, nickname: teamEntry.nickname, name: teamEntry.name, abbrev: teamEntry.abbrev } : null);
   const teamName = teamEntry
-    ? `${teamEntry.location || ''} ${teamEntry.nickname || ''}`.trim()
+    ? (teamEntry.name || `${teamEntry.location || ''} ${teamEntry.nickname || ''}`.trim() || teamEntry.abbrev || `Team ${teamId}`)
     : `Team ${teamId}`;
 
   return {

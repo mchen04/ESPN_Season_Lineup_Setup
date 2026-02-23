@@ -32,7 +32,7 @@ function extractSettings(raw) {
   const rosterSettings = raw.settings?.rosterSettings || {};
 
   const lineupSlotCounts = rosterSettings.lineupSlotCounts || {};
-  const irSlotCount = lineupSlotCounts['21'] ?? lineupSlotCounts[21] ?? 0;
+  const irSlotCount = lineupSlotCounts['13'] ?? lineupSlotCounts[13] ?? 0; // basketball IR = slot 13
 
   return {
     currentScoringPeriodId: status.currentMatchupPeriod

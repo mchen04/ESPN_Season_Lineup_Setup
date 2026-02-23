@@ -8,7 +8,7 @@
     "https://lm-api-reads.fantasy.espn.com/*",
     "https://lm-api-writes.fantasy.espn.com/*"
   ],
-  "background": { "service_worker": "src/background/service-worker.js" },
+  "background": { "service_worker": "src/background/service-worker.js", "type": "module" },
   "action": {
     "default_popup": "src/popup/popup.html",
     "default_icon": {
