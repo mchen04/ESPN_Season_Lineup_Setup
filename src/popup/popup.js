@@ -32,7 +32,10 @@ const el = {
   btnRun: document.getElementById('btn-run'),
   progressLabel: document.getElementById('progress-label'),
   progressFill: document.getElementById('progress-fill'),
-  doneMessage: document.getElementById('done-message'),
+  progressCounter: document.getElementById('progress-counter'),
+  progressEta: document.getElementById('progress-eta'),
+  statSubmitted: document.getElementById('stat-submitted'),
+  statSkipped: document.getElementById('stat-skipped'),
   doneErrors: document.getElementById('done-errors'),
   btnRerun: document.getElementById('btn-rerun'),
 };
@@ -166,11 +169,18 @@ function makePlayerRow(name, slotLabel, isBench = false) {
 function setProgress(completed, total) {
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
   el.progressFill.style.width = `${pct}%`;
-  el.progressLabel.textContent = `Day ${completed} of ${total}…`;
+  el.progressCounter.textContent = `${completed} / ${total}`;
+  const remaining = total - completed;
+  if (remaining > 0 && completed > 0) {
+    el.progressEta.textContent = `~${Math.ceil(remaining * 0.3)}s remaining`;
+  } else if (completed === total && total > 0) {
+    el.progressEta.textContent = 'Wrapping up…';
+  }
 }
 
 function showDone(submitted, skipped, errors) {
-  el.doneMessage.textContent = `${submitted} day${submitted !== 1 ? 's' : ''} submitted, ${skipped} already optimal.`;
+  animateCounter(el.statSubmitted, submitted);
+  animateCounter(el.statSkipped, skipped);
   if (errors.length > 0) {
     el.doneErrors.textContent = `${errors.length} day${errors.length !== 1 ? 's' : ''} failed (see console).`;
     el.doneErrors.classList.remove('hidden');
@@ -178,6 +188,15 @@ function showDone(submitted, skipped, errors) {
     el.doneErrors.classList.add('hidden');
   }
   showState('done');
+}
+
+function animateCounter(domEl, target, duration = 600) {
+  const start = performance.now();
+  (function tick(now) {
+    const t = Math.min((now - start) / duration, 1);
+    domEl.textContent = Math.round(target * Math.sqrt(t));
+    if (t < 1) requestAnimationFrame(tick);
+  })(performance.now());
 }
 
 // ── State management ──────────────────────────────────────────────────────────

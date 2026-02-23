@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ESPN Season Lineup Setup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -14,8 +17,15 @@
 
   <!-- STATE: loading -->
   <div id="state-loading" class="state">
-    <div class="spinner"></div>
-    <p>Loading roster...</p>
+    <div class="loading-dots">
+      <span></span><span></span><span></span>
+    </div>
+    <p class="loading-label">Loading roster</p>
+    <div class="skeleton-card">
+      <div class="skeleton-line wide"></div>
+      <div class="skeleton-line medium"></div>
+      <div class="skeleton-line narrow"></div>
+    </div>
   </div>
 
   <!-- STATE: error -->
@@ -37,6 +47,31 @@
       </div>
     </div>
 
+    <details class="rules-card">
+      <summary class="rules-toggle">
+        How lineups are set <span class="chevron">▾</span>
+      </summary>
+      <div class="rules-body">
+        <div class="rule-row">
+          <span class="tier-badge t1">1</span>
+          <span class="tier-desc"><strong>Healthy + Has game</strong> — Always starts</span>
+        </div>
+        <div class="rule-row">
+          <span class="tier-badge t2">2</span>
+          <span class="tier-desc"><strong>Injured + Has game</strong> — Starts after healthy</span>
+        </div>
+        <div class="rule-row">
+          <span class="tier-badge t3">3</span>
+          <span class="tier-desc"><strong>Healthy + No game</strong> — Benched</span>
+        </div>
+        <div class="rule-row">
+          <span class="tier-badge t4">4</span>
+          <span class="tier-desc"><strong>Injured + No game</strong> — Last resort</span>
+        </div>
+        <p class="rules-note">Tiebreaker: projected points. "Injured" = OUT only — Doubtful/Questionable count as healthy.</p>
+      </div>
+    </details>
+
     <div id="ir-section">
       <h2>IR Assignments</h2>
       <div id="ir-list" class="player-list"></div>
@@ -52,17 +87,53 @@
 
   <!-- STATE: submitting -->
   <div id="state-submitting" class="state hidden">
-    <p id="progress-label">Day 0 of 0...</p>
-    <div class="progress-bar">
+    <div class="progress-header">
+      <span class="activity-dot"></span>
+      <span id="progress-label">Setting lineups…</span>
+      <span id="progress-counter" class="progress-counter">0 / 0</span>
+    </div>
+    <div class="progress-track">
       <div id="progress-fill" class="progress-fill"></div>
     </div>
-    <p class="hint">Please keep this popup open.</p>
+    <div class="progress-footer">
+      <span id="progress-eta" class="hint"></span>
+      <span class="hint">Keep popup open</span>
+    </div>
   </div>
 
   <!-- STATE: done -->
   <div id="state-done" class="state hidden">
-    <div class="done-icon">✓</div>
-    <p id="done-message">Lineup set successfully.</p>
+    <div class="confetti-container">
+      <span class="confetti-dot" style="--tx:-60px;--ty:-80px;--c:#e8001c"></span>
+      <span class="confetti-dot" style="--tx:55px;--ty:-90px;--c:#22c55e"></span>
+      <span class="confetti-dot" style="--tx:-80px;--ty:-40px;--c:#f59e0b"></span>
+      <span class="confetti-dot" style="--tx:75px;--ty:-50px;--c:#e8001c"></span>
+      <span class="confetti-dot" style="--tx:-40px;--ty:-100px;--c:#22c55e"></span>
+      <span class="confetti-dot" style="--tx:40px;--ty:-70px;--c:#f59e0b"></span>
+      <span class="confetti-dot" style="--tx:-90px;--ty:-65px;--c:#a78bfa"></span>
+      <span class="confetti-dot" style="--tx:85px;--ty:-30px;--c:#38bdf8"></span>
+      <span class="confetti-dot" style="--tx:-25px;--ty:-85px;--c:#f59e0b"></span>
+      <span class="confetti-dot" style="--tx:65px;--ty:-95px;--c:#e8001c"></span>
+      <span class="confetti-dot" style="--tx:-70px;--ty:-20px;--c:#22c55e"></span>
+      <span class="confetti-dot" style="--tx:30px;--ty:-110px;--c:#a78bfa"></span>
+    </div>
+    <div class="done-checkmark-ring">
+      <svg viewBox="0 0 52 52" class="checkmark-svg">
+        <circle class="checkmark-circle" cx="26" cy="26" r="23" fill="none" stroke="#22c55e" stroke-width="3"/>
+        <polyline class="checkmark-tick" points="14,26 22,34 38,18" fill="none" stroke="#22c55e" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h2 class="done-title">Season lineup set!</h2>
+    <div class="done-stats">
+      <div class="done-stat-card">
+        <span id="stat-submitted" class="stat-number">0</span>
+        <span class="stat-label">Days submitted</span>
+      </div>
+      <div class="done-stat-card">
+        <span id="stat-skipped" class="stat-number muted">0</span>
+        <span class="stat-label">Already optimal</span>
+      </div>
+    </div>
     <p id="done-errors" class="error-text hidden"></p>
     <button id="btn-rerun" class="btn-secondary">Re-run</button>
   </div>

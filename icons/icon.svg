@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <radialGradient id="bg" cx="40%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#e8001c"/>
+      <stop offset="100%" stop-color="#7a0010"/>
+    </radialGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+  <circle cx="60" cy="58" r="30" fill="none" stroke="white" stroke-width="3.5" opacity="0.95"/>
+  <circle cx="60" cy="58" r="29" fill="rgba(255,255,255,0.1)"/>
+  <path d="M60 28 Q72 44 72 58 Q72 72 60 88" fill="none" stroke="white" stroke-width="2.5" opacity="0.85"/>
+  <path d="M60 28 Q48 44 48 58 Q48 72 60 88" fill="none" stroke="white" stroke-width="2.5" opacity="0.85"/>
+  <path d="M30 58 Q46 46 60 46 Q74 46 90 58" fill="none" stroke="white" stroke-width="2.5" opacity="0.85"/>
+  <path d="M30 58 Q46 70 60 70 Q74 70 90 58" fill="none" stroke="white" stroke-width="2.5" opacity="0.85"/>
+  <!-- Checkmark badge -->
+  <circle cx="96" cy="96" r="18" fill="white"/>
+  <circle cx="96" cy="96" r="15" fill="#22c55e"/>
+  <polyline points="88,96 93,102 104,89" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
