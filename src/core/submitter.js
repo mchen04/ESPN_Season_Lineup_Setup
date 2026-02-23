@@ -113,7 +113,7 @@ export async function runSeasonSetup({ leagueId, teamId, seasonYear, currentScor
       const payload = {
         isLeagueManager: false,
         teamId,
-        type: isFuture ? 'FUTURE_ROSTER' : 'LINEUP',
+        type: isFuture ? 'FUTURE_ROSTER' : 'ROSTER',
         memberId: auth.swid,
         scoringPeriodId,
         executionType: 'EXECUTE',

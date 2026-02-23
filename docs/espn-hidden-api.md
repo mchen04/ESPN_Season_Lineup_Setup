@@ -144,7 +144,7 @@ This is the **only write endpoint** for lineup management — used for both curr
 {
   "isLeagueManager": false,
   "teamId": 7,
-  "type": "LINEUP",
+  "type": "ROSTER",
   "memberId": "{SWID-WITH-BRACES}",
   "scoringPeriodId": 126,
   "executionType": "EXECUTE",
@@ -223,12 +223,12 @@ Transactions that include moves to/from `slotId 13` (IR) are rejected when `scor
 
 Once NBA games start (or by ESPN's configured lock time), the current scoring period lineup becomes read-only. ESPN returns `400 {"messages":["Invalid Input."]}` — a generic error, not the `TRAN_LINEUP_LOCKED` code used for future-period locks. Handle both.
 
-### FUTURE_ROSTER vs LINEUP
+### FUTURE_ROSTER vs ROSTER
 
-- `type: "LINEUP"` — current scoring period only
+- `type: "ROSTER"` — current scoring period only
 - `type: "FUTURE_ROSTER"` — any period after the current one
 
-Using `"LINEUP"` for a future period or `"FUTURE_ROSTER"` for the current period causes a 400.
+Using `"FUTURE_ROSTER"` for the current period or `"ROSTER"` for a future period causes a 400.
 
 ### Rate limiting
 
