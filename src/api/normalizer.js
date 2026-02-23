@@ -97,25 +97,38 @@ function extractPlayers(raw) {
 }
 
 /**
- * Parse the proTeamSchedules_wl response into a map:
- *   scoringPeriodId → Set<proTeamId> (teams playing that day)
+ * Parse per-day ESPN public scoreboard responses into a date → team IDs map.
+ *
+ * @param {Array<{dateStr: string, raw: object|null}>} dayResults
+ *   One entry per fetchNBADayScoreboard call. dateStr is "YYYYMMDD".
+ * @returns {Object<string, Set<number>>} YYYYMMDD → Set<ESPN teamId>
  */
-export function normalizeSchedule(raw) {
-  const scheduleMap = {}; // periodId → Set<proTeamId>
+export function normalizePublicSchedule(dayResults) {
+  const dateToTeams = {};
 
-  const proTeams = raw.settings?.proTeams ?? [];
-  for (const team of proTeams) {
-    const proTeamId = team.id;
-    const proGamesByScoringPeriod = team.proGamesByScoringPeriod ?? {};
+  for (const { dateStr, raw } of dayResults) {
+    if (!raw) continue;
 
-    for (const [periodStr, games] of Object.entries(proGamesByScoringPeriod)) {
-      const periodId = Number(periodStr);
-      if (!scheduleMap[periodId]) scheduleMap[periodId] = new Set();
-      if (Array.isArray(games) && games.length > 0) {
-        scheduleMap[periodId].add(proTeamId);
+    if (!raw.events || raw.events.length === 0) continue;
+
+    const teams = new Set();
+    for (const event of raw.events) {
+      for (const comp of event.competitions?.[0]?.competitors ?? []) {
+        const id = Number(comp.id ?? comp.team?.id);
+        if (id) teams.add(id);
       }
+    }
+    if (teams.size > 0) {
+      dateToTeams[dateStr] = teams;
     }
   }
 
-  return scheduleMap;
+  const datesWithGames = Object.keys(dateToTeams).sort();
+  console.log(`[Normalizer] public schedule: ${datesWithGames.length} dates with games, range ${datesWithGames[0] ?? '—'}–${datesWithGames[datesWithGames.length - 1] ?? '—'}`);
+  if (datesWithGames.length > 0) {
+    const sample = datesWithGames[0];
+    console.log(`[Normalizer] sample ${sample}: teams`, [...dateToTeams[sample]]);
+  }
+
+  return dateToTeams;
 }

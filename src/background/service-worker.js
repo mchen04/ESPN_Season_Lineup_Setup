@@ -3,8 +3,8 @@
  * Proxies all ESPN API fetches (cross-origin requires extension context).
  */
 
-import { fetchLeague, fetchPlayers, fetchProSchedule, submitLineup } from '../api/espn-client.js';
-import { normalizeLeague } from '../api/normalizer.js';
+import { fetchLeague, fetchPlayers, fetchNBADayScoreboard, submitLineup } from '../api/espn-client.js';
+import { normalizeLeague, normalizePublicSchedule } from '../api/normalizer.js';
 import { buildRemainingGameDays } from '../core/scheduler.js';
 import { assignIRSlots } from '../core/ir-assigner.js';
 import { runSeasonSetup } from '../core/submitter.js';
@@ -45,12 +45,17 @@ async function getPreview({ leagueId, seasonYear, auth }) {
 
   const myPlayers = players.filter(p => p.teamId === teamId);
 
-  const scheduleRaw = await fetchProSchedule(leagueId, seasonYear, auth);
-  const gameDays = buildRemainingGameDays(
-    scheduleRaw,
-    league.currentScoringPeriodId,
-    league.finalScoringPeriodId
-  );
+  const today = new Date();
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const datesToFetch = Array.from({ length: 60 }, (_, i) => {
+    const d = new Date(todayMidnight.getTime() + i * msPerDay);
+    return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+  });
+  const dayRaws = await Promise.all(datesToFetch.map(d => fetchNBADayScoreboard(d)));
+  const dayResults = datesToFetch.map((dateStr, i) => ({ dateStr, raw: dayRaws[i] }));
+  const dateToTeams = normalizePublicSchedule(dayResults);
+  const gameDays = buildRemainingGameDays(dateToTeams, league.currentScoringPeriodId, league.finalScoringPeriodId);
 
   const irAssignments = assignIRSlots(myPlayers, league.irSlotCount);
 

@@ -67,11 +67,23 @@ export async function fetchPlayers(leagueId, seasonYear, auth, playerIds) {
 }
 
 /**
- * Fetch the NBA pro team schedule (all scoring periods).
+ * Fetch the NBA scoreboard for one calendar day from ESPN's public site API (no auth required).
+ * @param {string} yyyymmdd - e.g. "20260223"
+ * @returns {object|null} raw scoreboard response, or null on failure
  */
-export async function fetchProSchedule(leagueId, seasonYear, auth) {
-  const url = `${BASE}/${seasonYear}/segments/0/leagues/${leagueId}?view=proTeamSchedules_wl`;
-  return espnFetch(url, auth);
+export async function fetchNBADayScoreboard(yyyymmdd) {
+  const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${yyyymmdd}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn(`[ESPN] NBA scoreboard ${yyyymmdd}: HTTP ${res.status}`);
+      return null;
+    }
+    return res.json();
+  } catch (err) {
+    console.warn(`[ESPN] NBA scoreboard ${yyyymmdd} fetch error:`, err.message);
+    return null;
+  }
 }
 
 /**

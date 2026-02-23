@@ -108,7 +108,7 @@ async function startSetup() {
     port.disconnect();
 
     if (response.ok) {
-      showDone(response.submitted, response.errors || []);
+      showDone(response.submitted, response.skipped || 0, response.errors || []);
     } else {
       showError(response.error || 'Lineup setup failed.');
     }
@@ -164,8 +164,8 @@ function setProgress(completed, total) {
   el.progressLabel.textContent = `Day ${completed} of ${total}…`;
 }
 
-function showDone(submitted, errors) {
-  el.doneMessage.textContent = `${submitted} lineup day${submitted !== 1 ? 's' : ''} submitted.`;
+function showDone(submitted, skipped, errors) {
+  el.doneMessage.textContent = `${submitted} day${submitted !== 1 ? 's' : ''} submitted, ${skipped} already optimal.`;
   if (errors.length > 0) {
     el.doneErrors.textContent = `${errors.length} day${errors.length !== 1 ? 's' : ''} failed (see console).`;
     el.doneErrors.classList.remove('hidden');
