@@ -94,8 +94,12 @@ export async function runSeasonSetup({ leagueId, teamId, seasonYear, currentScor
         currentSlots.set(item.playerId, item.toLineupSlotId);
       }
     } catch (err) {
-      console.error(`[Submitter] Error on period ${scoringPeriodId}:`, err);
-      errors.push(`Period ${scoringPeriodId}: ${err.message}`);
+      if (err.message.includes('TRAN_LINEUP_LOCKED')) {
+        console.warn(`[Submitter] Period ${scoringPeriodId} partially locked (${err.message}). Continuing...`);
+      } else {
+        console.error(`[Submitter] Error on period ${scoringPeriodId}:`, err);
+        errors.push(`Period ${scoringPeriodId}: ${err.message}`);
+      }
     }
 
     onProgress(submitted, total);

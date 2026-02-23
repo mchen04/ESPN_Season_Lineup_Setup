@@ -101,7 +101,8 @@ export function optimizeLineup(activePlayers, irPlayers, playingTeamIds, scoring
     }
   }
 
-  return items;
+  // Filter out NO-OP moves to prevent TRAN_INVALID_SCORINGPERIOD_NOT_CURRENT on future days
+  return items.filter(item => item.fromLineupSlotId !== item.toLineupSlotId);
 }
 
 function computeTier(player, playingTeamIds) {
