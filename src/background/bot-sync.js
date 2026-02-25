@@ -22,7 +22,11 @@ export async function syncTokensToBot() {
 
     if (!s2Cookie || !swidCookie) return;
 
-    const stored = await new Promise(r => chrome.storage.local.get(['botUrl', 'botSecret', 'leagueId', 'teamId', 'seasonYear'], r));
+    const stored = await new Promise(r => chrome.storage.local.get(['botUrl', 'botSecret', 'leagueId', 'teamId', 'seasonYear', 'botConsent'], r));
+
+    // Strict privacy policy check: DO NOT SYNC if user has not explicitly consented
+    if (!stored.botConsent) return;
+
     if (!stored.botUrl || !stored.botSecret) return;
     if (!stored.leagueId || !stored.teamId || !stored.seasonYear) return;
 
@@ -95,3 +99,11 @@ export async function syncTokensToBot() {
         console.error('[SW] Encryption or network error syncing tokens', err);
     }
 }
+
+// ── Manual Sync Trigger ───────────────────────────────────────────────────────
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg.type === 'MANUAL_SYNC_TOKENS') {
+        syncTokensToBot();
+        sendResponse({ ok: true });
+    }
+});

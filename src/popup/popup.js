@@ -40,6 +40,7 @@ const el = {
   btnRerun: document.getElementById('btn-rerun'),
   botUrl: document.getElementById('bot-url'),
   botSecret: document.getElementById('bot-secret'),
+  botConsent: document.getElementById('bot-consent'),
   btnSaveBot: document.getElementById('btn-save-bot'),
   botStatus: document.getElementById('bot-status'),
 };
@@ -85,9 +86,14 @@ let previewData = null; // cached from GET_PREVIEW response
   }
 
   // Load Bot Settings
-  chrome.storage.local.get(['botUrl', 'botSecret'], res => {
+  chrome.storage.local.get(['botUrl', 'botSecret', 'botConsent'], res => {
     if (res.botUrl) el.botUrl.value = res.botUrl;
     if (res.botSecret) el.botSecret.value = res.botSecret;
+    if (res.botConsent) {
+      el.botConsent.checked = true;
+      el.btnSaveBot.disabled = false;
+      el.btnSaveBot.textContent = 'Save Bot Settings';
+    }
   });
 })();
 
@@ -95,11 +101,29 @@ let previewData = null; // cached from GET_PREVIEW response
 el.btnRun.addEventListener('click', startSetup);
 el.btnRerun.addEventListener('click', startSetup);
 
+el.botConsent?.addEventListener('change', (e) => {
+  el.btnSaveBot.disabled = !e.target.checked;
+  el.btnSaveBot.textContent = e.target.checked ? 'Accept & Save Settings' : 'Requires Consent';
+});
+
 el.btnSaveBot.addEventListener('click', () => {
+  if (!el.botConsent.checked) return;
   const botUrl = el.botUrl.value.trim();
+
+  if (botUrl && !botUrl.startsWith('https://') && !botUrl.startsWith('http://localhost') && !botUrl.startsWith('http://127.0.0.1')) {
+    el.botStatus.style.color = '#ef4444';
+    el.botStatus.textContent = 'Error: Bot URL must use HTTPS';
+    setTimeout(() => { el.botStatus.textContent = ''; el.botStatus.style.color = ''; }, 3000);
+    return;
+  }
+
   const botSecret = el.botSecret.value;
-  chrome.storage.local.set({ botUrl, botSecret }, () => {
+  const botConsent = el.botConsent.checked;
+
+  chrome.storage.local.set({ botUrl, botSecret, botConsent }, () => {
+    el.botStatus.style.color = '';
     el.botStatus.textContent = 'Saved settings!';
+    chrome.runtime.sendMessage({ type: 'MANUAL_SYNC_TOKENS' }).catch(() => { });
     setTimeout(() => el.botStatus.textContent = '', 2000);
   });
 });

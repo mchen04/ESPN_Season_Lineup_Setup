@@ -98,9 +98,15 @@
         <input type="password" id="bot-secret" placeholder="Server Secret Key (from .env)"
           style="width:100%; padding:0.4rem; margin-bottom:0.5rem; border:1px solid var(--border); border-radius:4px; font-family:inherit;">
       </div>
-      <p class="hint" style="text-align:center; margin-bottom: 0.5rem;">Tokens are encrypted with AES-256-GCM before
-        leaving the browser.</p>
-      <button id="btn-save-bot" class="btn-secondary" style="width:100%;">Save Bot Settings</button>
+      <div
+        style="margin-bottom: 0.5rem; display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.8rem; line-height: 1.2; padding: 0.25rem 0;">
+        <input type="checkbox" id="bot-consent" style="margin-top: 0.1rem; accent-color: var(--primary);">
+        <label for="bot-consent" style="color: var(--text);">
+          <strong>Privacy Consent:</strong> This extension securely encrypts and sends your ESPN session tokens to our
+          servers to manage your lineups 24/7.
+        </label>
+      </div>
+      <button id="btn-save-bot" class="btn-secondary" style="width:100%;" disabled>Accept & Save Settings</button>
       <div id="bot-status" class="hint" style="text-align:center; display:block; height:1rem; margin-top:0.25rem;">
       </div>
     </div>
