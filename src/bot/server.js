@@ -2,10 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import crypto from 'crypto';
 import dotenv from 'dotenv';
 import { updateTokens } from './store.js';
 import { startScheduler } from './scheduler.js';
+import { initCrypto, decryptPayload } from './crypto.js';
 
 dotenv.config();
 
@@ -36,34 +36,12 @@ app.use('/api/', apiLimiter);
 
 // ── Crypto Utilities ─────────────────────────────────────────────────────────
 const BOT_SECRET_KEY = process.env.BOT_SECRET_KEY;
-
-if (!BOT_SECRET_KEY || BOT_SECRET_KEY.length < 32) {
-    console.error('CRITICAL WARNING: BOT_SECRET_KEY is missing or too short in .env file.');
-    console.error('Please generate a secure 32+ character key and restart the server.');
+try {
+    initCrypto(BOT_SECRET_KEY);
+} catch (err) {
+    console.error(`CRITICAL WARNING: ${err.message}`);
+    console.error('Please generate a secure key in your .env file and restart the server.');
     process.exit(1);
-}
-
-// Convert string key to exactly 32 bytes for AES-256
-const keyBuffer = crypto.createHash('sha256').update(String(BOT_SECRET_KEY)).digest();
-
-/**
- * Decrypts an AES-256-GCM encrypted payload.
- */
-function decryptPayload(encryptedData) {
-    try {
-        const iv = Buffer.from(encryptedData.iv, 'hex');
-        const authTag = Buffer.from(encryptedData.authTag, 'hex');
-        const ciphertext = Buffer.from(encryptedData.ciphertext, 'hex');
-
-        const decipher = crypto.createDecipheriv('aes-256-gcm', keyBuffer, iv);
-        decipher.setAuthTag(authTag);
-
-        let decrypted = decipher.update(ciphertext, 'hex', 'utf8');
-        decrypted += decipher.final('utf8');
-        return JSON.parse(decrypted);
-    } catch (err) {
-        throw new Error('Decryption failed. Invalid key or corrupted payload.');
-    }
 }
 
 // ── Endpoints ────────────────────────────────────────────────────────────────
