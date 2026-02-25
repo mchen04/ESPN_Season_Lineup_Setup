@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="popup.css">
 </head>
+
 <body>
   <header>
     <div class="logo">ESPN</div>
@@ -68,7 +70,8 @@
           <span class="tier-badge t4">4</span>
           <span class="tier-desc"><strong>Injured + No game</strong> — Last resort</span>
         </div>
-        <p class="rules-note">Tiebreaker: projected points. "Injured" = OUT only — Doubtful/Questionable count as healthy.</p>
+        <p class="rules-note">Tiebreaker: projected points. "Injured" = OUT only — Doubtful/Questionable count as
+          healthy.</p>
       </div>
     </details>
 
@@ -84,17 +87,22 @@
 
     <button id="btn-run" class="btn-primary">Set Season Lineup</button>
 
-    <div id="bot-settings-section" class="bot-settings" style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+    <div id="bot-settings-section" class="bot-settings"
+      style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
       <h2 style="margin-bottom: 0.5rem; font-size: 0.9rem;">24/7 Bot Synchronizer</h2>
       <div class="summary-row">
-        <input type="text" id="bot-url" placeholder="http://bot-server:3000" style="width:100%; padding:0.4rem; margin-bottom:0.4rem; border:1px solid var(--border); border-radius:4px; font-family:inherit;">
+        <input type="text" id="bot-url" placeholder="http://localhost:3000"
+          style="width:100%; padding:0.4rem; margin-bottom:0.4rem; border:1px solid var(--border); border-radius:4px; font-family:inherit;">
       </div>
-      <div class="summary-row" style="display:flex; gap:0.4rem; margin-bottom:0.5rem;">
-        <input type="text" id="bot-username" placeholder="Username" style="flex:1; padding:0.4rem; border:1px solid var(--border); border-radius:4px; font-family:inherit;">
-        <input type="password" id="bot-password" placeholder="Password" style="flex:1; padding:0.4rem; border:1px solid var(--border); border-radius:4px; font-family:inherit;">
+      <div class="summary-row">
+        <input type="password" id="bot-secret" placeholder="Server Secret Key (from .env)"
+          style="width:100%; padding:0.4rem; margin-bottom:0.5rem; border:1px solid var(--border); border-radius:4px; font-family:inherit;">
       </div>
+      <p class="hint" style="text-align:center; margin-bottom: 0.5rem;">Tokens are encrypted with AES-256-GCM before
+        leaving the browser.</p>
       <button id="btn-save-bot" class="btn-secondary" style="width:100%;">Save Bot Settings</button>
-      <div id="bot-status" class="hint" style="text-align:center; display:block; height:1rem; margin-top:0.25rem;"></div>
+      <div id="bot-status" class="hint" style="text-align:center; display:block; height:1rem; margin-top:0.25rem;">
+      </div>
     </div>
   </div>
 
@@ -132,8 +140,9 @@
     </div>
     <div class="done-checkmark-ring">
       <svg viewBox="0 0 52 52" class="checkmark-svg">
-        <circle class="checkmark-circle" cx="26" cy="26" r="23" fill="none" stroke="#22c55e" stroke-width="3"/>
-        <polyline class="checkmark-tick" points="14,26 22,34 38,18" fill="none" stroke="#22c55e" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle class="checkmark-circle" cx="26" cy="26" r="23" fill="none" stroke="#22c55e" stroke-width="3" />
+        <polyline class="checkmark-tick" points="14,26 22,34 38,18" fill="none" stroke="#22c55e" stroke-width="3.5"
+          stroke-linecap="round" stroke-linejoin="round" />
       </svg>
     </div>
     <h2 class="done-title">Season lineup set!</h2>
@@ -153,4 +162,5 @@
 
   <script src="popup.js" type="module"></script>
 </body>
+
 </html>

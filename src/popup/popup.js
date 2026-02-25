@@ -39,8 +39,7 @@ const el = {
   doneErrors: document.getElementById('done-errors'),
   btnRerun: document.getElementById('btn-rerun'),
   botUrl: document.getElementById('bot-url'),
-  botUsername: document.getElementById('bot-username'),
-  botPassword: document.getElementById('bot-password'),
+  botSecret: document.getElementById('bot-secret'),
   btnSaveBot: document.getElementById('btn-save-bot'),
   botStatus: document.getElementById('bot-status'),
 };
@@ -86,10 +85,9 @@ let previewData = null; // cached from GET_PREVIEW response
   }
 
   // Load Bot Settings
-  chrome.storage.local.get(['botUrl', 'botUsername', 'botPassword'], res => {
+  chrome.storage.local.get(['botUrl', 'botSecret'], res => {
     if (res.botUrl) el.botUrl.value = res.botUrl;
-    if (res.botUsername) el.botUsername.value = res.botUsername;
-    if (res.botPassword) el.botPassword.value = res.botPassword;
+    if (res.botSecret) el.botSecret.value = res.botSecret;
   });
 })();
 
@@ -99,9 +97,8 @@ el.btnRerun.addEventListener('click', startSetup);
 
 el.btnSaveBot.addEventListener('click', () => {
   const botUrl = el.botUrl.value.trim();
-  const botUsername = el.botUsername.value.trim();
-  const botPassword = el.botPassword.value;
-  chrome.storage.local.set({ botUrl, botUsername, botPassword }, () => {
+  const botSecret = el.botSecret.value;
+  chrome.storage.local.set({ botUrl, botSecret }, () => {
     el.botStatus.textContent = 'Saved settings!';
     setTimeout(() => el.botStatus.textContent = '', 2000);
   });

@@ -1,6 +1,6 @@
 import schedule from 'node-schedule';
 import { fetchNBADayScoreboard, fetchLeague } from '../api/espn-client.js';
-import { getFirstUser, getTokens } from './db.js';
+import { getTokens } from './store.js';
 import { runSeasonSetup } from '../core/submitter.js';
 import { normalizeLeague } from '../api/normalizer.js';
 
@@ -9,15 +9,10 @@ export function startScheduler() {
     schedule.scheduleJob('1 0 * * *', async () => {
         console.log('[Scheduler] Running daily master check at 12:01 AM...');
 
-        // 1. Get user & tokens (Supporting single-user mode for now)
-        const user = getFirstUser();
-        if (!user) {
-            console.log('[Scheduler] No user registered. Skipping daily run.');
-            return;
-        }
-        const tokens = getTokens(user.id);
+        // 1. Get tokens from local secure store
+        const tokens = getTokens();
         if (!tokens || !tokens.swid || !tokens.espn_s2 || !tokens.league_id) {
-            console.log('[Scheduler] Missing ESPN tokens or league info. Skipping.');
+            console.log('[Scheduler] Missing ESPN tokens or league info. Waiting for Chrome extension sync.');
             return;
         }
 

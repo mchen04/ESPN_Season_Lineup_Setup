@@ -1,92 +1,115 @@
 import express from 'express';
 import cors from 'cors';
-import { createUser, verifyUser, updateTokens } from './db.js';
-import { startScheduler } from './scheduler.js';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import crypto from 'crypto';
 import dotenv from 'dotenv';
+import { updateTokens } from './store.js';
+import { startScheduler } from './scheduler.js';
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
-app.use(cors()); // Allow requests from the extension
 
-// ── Middleware ───────────────────────────────────────────────────────────────
-/**
- * Express middleware to authenticate bot API requests using Basic Auth.
- * Parses the Authorization header, validates credentials via DB, and attaches `req.userId`.
- */
-const authenticate = async (req, res, next) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Basic ')) {
-        return res.status(401).json({ error: 'Missing or invalid Authorization header' });
-    }
+// ── Security Middleware ──────────────────────────────────────────────────────
+app.use(helmet()); // Sets secure HTTP headers automatically
 
-    const credentials = Buffer.from(authHeader.slice(6), 'base64').toString('utf8');
-    const [username, password] = credentials.split(':');
-
-    try {
-        const userId = await verifyUser(username, password);
-        if (!userId) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+// Strict CORS: Only allow requests originating from a Chrome Extension
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin || origin.startsWith('chrome-extension://')) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
         }
-        req.userId = userId;
-        next();
-    } catch (err) {
-        res.status(500).json({ error: 'Authentication error' });
     }
-};
+}));
+
+// Rate Limiting: Prevent brute-force spamming of the auth/token endpoints
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    message: { error: 'Too many requests, please try again later.' }
+});
+app.use('/api/', apiLimiter);
+
+// ── Crypto Utilities ─────────────────────────────────────────────────────────
+const BOT_SECRET_KEY = process.env.BOT_SECRET_KEY;
+
+if (!BOT_SECRET_KEY || BOT_SECRET_KEY.length < 32) {
+    console.error('CRITICAL WARNING: BOT_SECRET_KEY is missing or too short in .env file.');
+    console.error('Please generate a secure 32+ character key and restart the server.');
+    process.exit(1);
+}
+
+// Convert string key to exactly 32 bytes for AES-256
+const keyBuffer = crypto.createHash('sha256').update(String(BOT_SECRET_KEY)).digest();
+
+/**
+ * Decrypts an AES-256-GCM encrypted payload.
+ */
+function decryptPayload(encryptedData) {
+    try {
+        const iv = Buffer.from(encryptedData.iv, 'hex');
+        const authTag = Buffer.from(encryptedData.authTag, 'hex');
+        const ciphertext = Buffer.from(encryptedData.ciphertext, 'hex');
+
+        const decipher = crypto.createDecipheriv('aes-256-gcm', keyBuffer, iv);
+        decipher.setAuthTag(authTag);
+
+        let decrypted = decipher.update(ciphertext, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        return JSON.parse(decrypted);
+    } catch (err) {
+        throw new Error('Decryption failed. Invalid key or corrupted payload.');
+    }
+}
 
 // ── Endpoints ────────────────────────────────────────────────────────────────
-/**
- * POST /api/auth/register
- * Registers a new user for the local bot database.
- */
-app.post('/api/auth/register', async (req, res) => {
-    const { username, password } = req.body;
-    if (!username || !password) {
-        return res.status(400).json({ error: 'Username and password required' });
-    }
-    try {
-        await createUser(username, password);
-        res.json({ success: true, message: 'User registered successfully' });
-    } catch (err) {
-        res.status(400).json({ error: err.message });
-    }
-});
 
 /**
- * POST /api/auth/login
- * Validates credentials via `authenticate` middleware. Extension uses this to verify connection.
+ * POST /api/auth/verify
+ * Allows the extension to ping the server with an encrypted test payload to verify the secret key.
  */
-app.post('/api/auth/login', authenticate, (req, res) => {
-    res.json({ success: true, message: 'Authenticated successfully' });
+app.post('/api/auth/verify', (req, res) => {
+    try {
+        const payload = decryptPayload(req.body);
+        if (payload && payload.ping === 'pong') {
+            return res.json({ success: true, message: 'Authenticated successfully' });
+        }
+        res.status(401).json({ error: 'Invalid payload content' });
+    } catch (err) {
+        res.status(401).json({ error: 'Invalid secret key or decryption failed' });
+    }
 });
 
 /**
  * POST /api/espn/tokens
- * Receives actively captured ESPN session tokens from the Chrome Extension background worker.
- * Updates the user's tokens and league identifiers durably.
+ * Receives AES-GCM encrypted ESPN session tokens from the Chrome Extension background worker.
  */
-app.post('/api/espn/tokens', authenticate, (req, res) => {
-    const { swid, espn_s2, leagueId, teamId, seasonYear } = req.body;
-    if (!swid || !espn_s2 || !leagueId || !teamId || !seasonYear) {
-        return res.status(400).json({ error: 'Missing required ESPN data fields' });
-    }
-
+app.post('/api/espn/tokens', (req, res) => {
     try {
-        updateTokens(req.userId, swid, espn_s2, leagueId, teamId, seasonYear);
-        console.log(`[Bot Server] Successfully received and updated ESPN tokens for user ${req.userId}`);
+        const payload = decryptPayload(req.body);
+
+        const { swid, espn_s2, leagueId, teamId, seasonYear } = payload;
+        if (!swid || !espn_s2 || !leagueId || !teamId || !seasonYear) {
+            return res.status(400).json({ error: 'Missing required ESPN data fields in payload' });
+        }
+
+        updateTokens(swid, espn_s2, leagueId, teamId, seasonYear);
+        console.log(`[Bot Server] Successfully received and securely decrypted ESPN tokens.`);
         res.json({ success: true });
     } catch (err) {
-        console.error('[Bot Server] Error updating tokens:', err);
-        res.status(500).json({ error: 'Failed to update tokens' });
+        console.error('[Bot Server] Token update failed:', err.message);
+        res.status(401).json({ error: 'Failed to securely read tokens' });
     }
 });
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-    console.log(`[Bot Server] Server listening on port ${PORT}`);
+    console.log(`[Bot Server] Security hardened server listening on port ${PORT}`);
     // Start the background schedule after the server boots
     startScheduler();
 });

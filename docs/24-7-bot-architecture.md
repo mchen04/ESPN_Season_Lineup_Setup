@@ -23,18 +23,19 @@ ESPN API requests require two specific cookies and two custom headers:
    - `X-Fantasy-Platform: kona-PROD-m.fantasy.espn.com-android`
    *(Without these headers, private API requests will be rejected.)*
 
-### How the Bot Authenticates: The Extension-to-Server Bridge
-Because the login flow is too difficult to automate reliably, the standard approach for headless ESPN bots used to be manual token injection. We avoid this by implementing an **Automated Token Bridge**:
+### How the Bot Authenticates: The Secure Token Bridge
+Because the login flow is too difficult to automate reliably, the standard approach for headless ESPN bots used to be manual token injection. We avoid this by implementing an **Automated Secure Token Bridge**:
 
 1. **The Extension Observer:** The Chrome extension runs in the background and observes cookies on the `fantasy.espn.com` domain.
 2. **Token Capture:** Whenever you log into ESPN Fantasy on your normal desktop browser, the extension automatically captures the active `espn_s2` and `SWID` cookies.
-3. **Secure Transmission:** The extension immediately sends an HTTP POST request to a secure endpoint on the 24/7 Bot server (e.g., `POST /api/auth/update`), carrying the fresh tokens.
-4. **Server Storage:** The bot server receives the new tokens and gracefully updates its persistent storage (e.g., updating a local SQLite DB, a configuration file, or overriding the running process's memory/env variables) to keep its API requests authenticated seamlessly.
+3. **AES-256 Encryption:** The extension uses the Web Crypto API to encrypt these tokens using `AES-256-GCM` and a user-provided `BOT_SECRET_KEY`.
+4. **Secure Transmission:** The extension sends the encrypted ciphertext to a strict CORS-protected endpoint on the 24/7 Bot server (`POST /api/espn/tokens`).
+5. **Server Storage:** The bot server natively decrypts the payload using the same `.env` secret key and gracefully updates its persistent storage (a local `state.json` file) to keep its API requests authenticated seamlessly.
 
 ### Token Expiration Handling
 **The Catch:** The `espn_s2` cookie will eventually expire (often lasting several months, but forced logouts happen).
 - If ESPN forces a logout or the token expires naturally, the bot's API requests will start failing (returning `HTTP 401 Unauthorized`).
-- **Resolution:** By simply re-logging into ESPN on your desktop browser (with the extension active), the new tokens are instantly captured and piped to the server, instantly reviving the headless bot without any manual server intervention or restarts.
+- **Resolution:** By simply re-logging into ESPN on your desktop browser (with the extension active), the new tokens are instantly captured, encrypted, and piped to the server, silently reviving the headless bot without any manual server intervention or restarts.
 
 ## Core Loop & Scheduling
 
@@ -56,8 +57,9 @@ Within the Daily Master Scheduler loop, the bot schedules a single, high-priorit
 ## Server Technology Stack (Node.js)
 To seamlessly reuse the existing Chrome Extension's scraping logic, the server should be built with:
 - **Runtime:** `Node.js` (Allows sharing of `src/api` and `src/core` modules).
-- **Web Server:** `express` (To expose the `POST /api/auth/update` endpoint for the token bridge).
-- **Scheduler:** `node-schedule` or `node-cron` (For precise, dynamic cron triggers).
-- **Persistent Storage:** `better-sqlite3` or `lowdb` (For lightweight, filesystem-based JSON storage of cookies and state without managing a database server).
+- **Web Server:** `express` (Exposes the `POST /api/espn/tokens` endpoint for the token bridge).
+- **Security Middleware:** `helmet` and `express-rate-limit` (To protect against local sniffing and brute-force).
+- **Scheduler:** `node-schedule` (For precise, dynamic cron triggers).
+- **Persistent Storage:** Native `fs` writing to a local `state.json` (For lightweight storage of tokens without managing a database server).
 - **Process Manager:** `pm2` (To daemonize the application and ensure 24/7 uptime if the Node process crashes).
-- **Other:** `node-fetch` (if Node version < 18), `dotenv`.
+- **Other:** `dotenv`.

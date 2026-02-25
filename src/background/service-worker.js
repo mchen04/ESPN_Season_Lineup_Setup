@@ -139,32 +139,64 @@ async function syncTokensToBot() {
 
   if (!s2Cookie || !swidCookie) return;
 
-  const stored = await new Promise(r => chrome.storage.local.get(['botUrl', 'botUsername', 'botPassword', 'leagueId', 'teamId', 'seasonYear'], r));
-  if (!stored.botUrl || !stored.botUsername || !stored.botPassword) return;
+  const stored = await new Promise(r => chrome.storage.local.get(['botUrl', 'botSecret', 'leagueId', 'teamId', 'seasonYear'], r));
+  if (!stored.botUrl || !stored.botSecret) return;
   if (!stored.leagueId || !stored.teamId || !stored.seasonYear) return;
 
-  const authHeader = 'Basic ' + btoa(`${stored.botUsername}:${stored.botPassword}`);
   try {
+    // 1. Prepare data
+    const payload = JSON.stringify({
+      swid: swidCookie.value,
+      espn_s2: s2Cookie.value,
+      leagueId: stored.leagueId,
+      teamId: stored.teamId,
+      seasonYear: stored.seasonYear
+    });
+
+    const enc = new TextEncoder();
+
+    // 2. Hash the user string secret into a 256-bit (32 byte) key for AES
+    const keyMaterial = await crypto.subtle.digest('SHA-256', enc.encode(stored.botSecret));
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      keyMaterial,
+      { name: 'AES-GCM' },
+      false,
+      ['encrypt']
+    );
+
+    // 3. Encrypt payload
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encryptedBuffer = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      cryptoKey,
+      enc.encode(payload)
+    );
+
+    // 4. Extract Ciphertext and Auth Tag (WebCrypto appends the 16-byte tag to the ciphertext)
+    const encryptedBytes = new Uint8Array(encryptedBuffer);
+    const ciphertext = encryptedBytes.slice(0, -16);
+    const authTag = encryptedBytes.slice(-16);
+
+    // 5. Build final secure payload
+    const securePayload = {
+      iv: Array.from(iv).map(b => b.toString(16).padStart(2, '0')).join(''),
+      ciphertext: Array.from(ciphertext).map(b => b.toString(16).padStart(2, '0')).join(''),
+      authTag: Array.from(authTag).map(b => b.toString(16).padStart(2, '0')).join(''),
+    };
+
     const res = await fetch(`${stored.botUrl}/api/espn/tokens`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader
-      },
-      body: JSON.stringify({
-        swid: swidCookie.value,
-        espn_s2: s2Cookie.value,
-        leagueId: stored.leagueId,
-        teamId: stored.teamId,
-        seasonYear: stored.seasonYear
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(securePayload)
     });
+
     if (res.ok) {
-      console.log('[SW] Synced tokens to Bot successfully');
+      console.log('[SW] Synced tokens to Bot securely');
     } else {
-      console.error('[SW] Failed to sync tokens to Bot', await res.text());
+      console.error('[SW] Failed to sync tokens securely', await res.text());
     }
   } catch (err) {
-    console.error('[SW] Network error syncing tokens', err);
+    console.error('[SW] Encryption or network error syncing tokens', err);
   }
 }

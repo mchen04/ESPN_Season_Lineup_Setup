@@ -48,6 +48,9 @@ If you want the bot to manage your lineup continuously without your intervention
 
 ### 1. Start the Bot Server
 You must have Node.js installed. Open a terminal in the project folder:
+1. Copy `.env.example` to a new file named `.env`.
+2. Open `.env` and set a secure sequence for `BOT_SECRET_KEY` (e.g., a long random password).
+3. Install dependencies and start the server:
 ```bash
 npm install
 npm start
@@ -55,13 +58,13 @@ npm start
 The server runs on `http://localhost:3000` by default. Note: This terminal must stay open (or you can use a process manager like `pm2`) for the bot to run daily.
 
 ### 2. Connect the Extension
-Because ESPN logins are highly protected, the bot cannot log itself in. Instead, the Chrome Extension acts as a secure bridge:
+Because ESPN logins are highly protected, the bot cannot log itself in. Instead, the Chrome Extension acts as a secure encrypted bridge:
 1. Open the Chrome Extension popup.
 2. Under **"24/7 Bot Synchronizer"**, enter your bot server URL (`http://localhost:3000`).
-3. Enter a username and password (this registers you locally so no one else can control your bot). Click **Save Bot Settings**.
-4. Important: Every time you visit or log in to `fantasy.espn.com`, the extension will automatically capture your session cookies and send them to the bot server.
+3. Enter your exact `BOT_SECRET_KEY` from your `.env` file into the "Server Secret Key" field. Click **Save Bot Settings**.
+4. Important: Every time you visit or log in to `fantasy.espn.com`, the extension will securely encrypt your session cookies using AES-256-GCM and send them to the bot server.
 
-As long as the local Bot Server is running and has received your latest cookies from the extension, it will automatically handle your lineup every day!
+As long as the local Bot Server is running and has received your latest tokens from the extension, it will automatically handle your lineup every day!
 
 ---
 
@@ -76,6 +79,7 @@ Yes, as long as you're logged in to ESPN in Chrome.
 **Why does Chrome say the extension is unverified?**
 Because it isn't published on the Chrome Web Store. The extension only communicates with ESPN's servers and your local Bot Server.
 
-## Privacy
+## Privacy & Security
 
 This tool runs locally on your machine. It securely reads your ESPN login cookies to authenticate API requests and does not send your data to any third-party servers.
+Furthermore, local traffic between the Chrome Extension and the Bot Server is secured via **AES-256-GCM payload encryption**. Even if a malicious script or local sniffer monitored your `localhost` network traffic, your ESPN session tokens cannot be read without your secret `.env` key.
