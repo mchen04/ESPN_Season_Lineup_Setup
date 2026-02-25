@@ -14,9 +14,14 @@ The bot must be hosted on an always-on environment to ensure high-precision sche
 Since the bot runs on a headless server, it cannot "log in" through the normal ESPN website UI (which uses complex, heavily bot-protected login flows).
 
 ### How ESPN Auth Works
-ESPN API requests require two specific cookies:
-1. `SWID`: A static unique identifier for your account. This rarely changes.
-2. `espn_s2`: A session token. This is what proves you are currently authenticated.
+ESPN API requests require two specific cookies and two custom headers:
+1. **Cookies**:
+   - `SWID`: A static unique identifier for your account (must include the `{}` braces, e.g., `{ABC-123}`). This rarely changes.
+   - `espn_s2`: A session token. This proves you are currently authenticated.
+2. **Headers**:
+   - `X-Fantasy-Source: kona`
+   - `X-Fantasy-Platform: kona-PROD-m.fantasy.espn.com-android`
+   *(Without these headers, private API requests will be rejected.)*
 
 ### How the Bot Authenticates: The Extension-to-Server Bridge
 Because the login flow is too difficult to automate reliably, the standard approach for headless ESPN bots used to be manual token injection. We avoid this by implementing an **Automated Token Bridge**:
