@@ -2,9 +2,9 @@
 
 ## Overview
 
-A Google Chrome Extension that performs a **one-time bulk lineup setup** for an entire ESPN Fantasy Basketball season. Think of ESPN's "Quick Lineup" feature, but instead of optimizing just the current week, it submits optimal starters for **every remaining game day of the season** in a single click.
+A Google Chrome Extension and Node.js Bot Server that performs a **one-time bulk lineup setup** for an entire ESPN Fantasy Basketball season, or runs continuously in the background to handle updates right before tip-off.
 
-The tool is smarter than ESPN's built-in Quick Lineup in one critical way: it **accounts for injured players' expected return dates** and pre-fills them into starting slots from that date forward, rather than ignoring them entirely.
+The tool is smarter than ESPN's built-in Quick Lineup in one critical way: it **accounts for injured players' expected return dates** and pre-fills them into starting slots from that date forward, rather than ignoring them entirely. It also automatically moves players on and off the Injured Reserve (IR) slots **dynamically on game days** if operating in 24/7 background mode.
 
 ---
 
@@ -21,12 +21,18 @@ This leaves value on the table. A player expected back in 3 days should be pre-s
 
 ## Core Features
 
-### 1. Season-Wide Lineup Submission
+### 1. Lineup Submission (Two Operating Modes)
+
+**Mode A: One-Time Manual Setup (Chrome Extension)**
 - On run, the extension reads the user's ESPN roster and the full NBA schedule
 - For every remaining game day of the season, it determines the optimal starting lineup
 - It bulk-submits all of those lineup decisions to ESPN (via ESPN's private fantasy API)
-- This is a **one-time setup** — run once, done for the season
 - User can **re-run at any time** to refresh (e.g., after a trade, pickup, or player return from injury)
+
+**Mode B: 24/7 Automation (Local Bot Server + Extension Bridge)**
+- A background `Node.js` server uses `node-schedule` to analyze the NBA master schedule every day at 12:01 AM.
+- Exactly 5 minutes before the earliest game, the bot evaluates the user's roster priorities and adjusts active lineup slots automatically.
+- The Chrome Extension works passively as an autonomous bridge — if the user logs into `fantasy.espn.com`, it captures their secure tokens and `POST`s them directly to the active Bot Server to maintain synchronization.
 
 ### 2. Start/Bench Decision Logic (Priority Order)
 
@@ -128,5 +134,4 @@ The extension runs authenticated as the logged-in user (uses existing ESPN sessi
 - Trade recommendations
 - Waiver wire suggestions
 - Notification/alerts when a player returns
-- Auto-triggered re-optimization (one-time manual setup only)
 - Support for leagues other than points format

@@ -38,6 +38,11 @@ const el = {
   statSkipped: document.getElementById('stat-skipped'),
   doneErrors: document.getElementById('done-errors'),
   btnRerun: document.getElementById('btn-rerun'),
+  botUrl: document.getElementById('bot-url'),
+  botUsername: document.getElementById('bot-username'),
+  botPassword: document.getElementById('bot-password'),
+  btnSaveBot: document.getElementById('btn-save-bot'),
+  botStatus: document.getElementById('bot-status'),
 };
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -79,12 +84,33 @@ let previewData = null; // cached from GET_PREVIEW response
   } catch (err) {
     showError(`Failed to contact service worker: ${err.message}`);
   }
+
+  // Load Bot Settings
+  chrome.storage.local.get(['botUrl', 'botUsername', 'botPassword'], res => {
+    if (res.botUrl) el.botUrl.value = res.botUrl;
+    if (res.botUsername) el.botUsername.value = res.botUsername;
+    if (res.botPassword) el.botPassword.value = res.botPassword;
+  });
 })();
 
 // ── Button handlers ───────────────────────────────────────────────────────────
 el.btnRun.addEventListener('click', startSetup);
 el.btnRerun.addEventListener('click', startSetup);
 
+el.btnSaveBot.addEventListener('click', () => {
+  const botUrl = el.botUrl.value.trim();
+  const botUsername = el.botUsername.value.trim();
+  const botPassword = el.botPassword.value;
+  chrome.storage.local.set({ botUrl, botUsername, botPassword }, () => {
+    el.botStatus.textContent = 'Saved settings!';
+    setTimeout(() => el.botStatus.textContent = '', 2000);
+  });
+});
+
+/**
+ * Initiates the multi-day lineup setup run.
+ * Sets up a message port to listen to `onProgress` callbacks from the service worker.
+ */
 async function startSetup() {
   if (!previewData) return;
 
@@ -127,6 +153,11 @@ async function startSetup() {
 }
 
 // ── Render helpers ────────────────────────────────────────────────────────────
+/**
+ * Renders the state of the user's team onto the DOM before submission.
+ * Populates Team Name, Days Remaining, and proposed IR actions.
+ * @param {object} data - Normalized preview stats structure.
+ */
 function renderPreview(data) {
   el.previewTeamName.textContent = data.teamName || '—';
   el.previewGameDays.textContent = data.gameDayCount ?? '—';
@@ -166,6 +197,11 @@ function makePlayerRow(name, slotLabel, isBench = false) {
   return row;
 }
 
+/**
+ * Updates the visual loading bar based on iterations completed out of total.
+ * @param {number} completed 
+ * @param {number} total 
+ */
 function setProgress(completed, total) {
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
   el.progressFill.style.width = `${pct}%`;
@@ -178,6 +214,12 @@ function setProgress(completed, total) {
   }
 }
 
+/**
+ * Triggers the final success view including animated counters.
+ * @param {number} submitted 
+ * @param {number} skipped 
+ * @param {string[]} errors 
+ */
 function showDone(submitted, skipped, errors) {
   animateCounter(el.statSubmitted, submitted);
   animateCounter(el.statSkipped, skipped);
@@ -200,6 +242,10 @@ function animateCounter(domEl, target, duration = 600) {
 }
 
 // ── State management ──────────────────────────────────────────────────────────
+/**
+ * Hides all main state `div`s and explicitly reveals the requested `name`.
+ * @param {string} name - 'loading' | 'error' | 'preview' | 'submitting' | 'done'
+ */
 function showState(name) {
   for (const [key, el] of Object.entries(states)) {
     el.classList.toggle('hidden', key !== name);

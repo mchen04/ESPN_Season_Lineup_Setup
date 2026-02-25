@@ -83,6 +83,19 @@
     </div>
 
     <button id="btn-run" class="btn-primary">Set Season Lineup</button>
+
+    <div id="bot-settings-section" class="bot-settings" style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+      <h2 style="margin-bottom: 0.5rem; font-size: 0.9rem;">24/7 Bot Synchronizer</h2>
+      <div class="summary-row">
+        <input type="text" id="bot-url" placeholder="http://bot-server:3000" style="width:100%; padding:0.4rem; margin-bottom:0.4rem; border:1px solid var(--border); border-radius:4px; font-family:inherit;">
+      </div>
+      <div class="summary-row" style="display:flex; gap:0.4rem; margin-bottom:0.5rem;">
+        <input type="text" id="bot-username" placeholder="Username" style="flex:1; padding:0.4rem; border:1px solid var(--border); border-radius:4px; font-family:inherit;">
+        <input type="password" id="bot-password" placeholder="Password" style="flex:1; padding:0.4rem; border:1px solid var(--border); border-radius:4px; font-family:inherit;">
+      </div>
+      <button id="btn-save-bot" class="btn-secondary" style="width:100%;">Save Bot Settings</button>
+      <div id="bot-status" class="hint" style="text-align:center; display:block; height:1rem; margin-top:0.25rem;"></div>
+    </div>
   </div>
 
   <!-- STATE: submitting -->

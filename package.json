@@ -1,0 +1,24 @@
+{
+  "name": "espn_season_lineup_setup",
+  "version": "1.0.0",
+  "description": "A Chrome extension that automatically sets your NBA Fantasy Basketball lineup for **every remaining game day of the season** in one click.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "better-sqlite3": "^12.6.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "node-schedule": "^2.1.1"
+  }
+}

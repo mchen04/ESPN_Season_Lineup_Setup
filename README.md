@@ -1,8 +1,10 @@
-# ESPN Season Lineup Setup
+# ESPN Season Lineup Setup & 24/7 Bot
 
-A Chrome extension that automatically sets your NBA Fantasy Basketball lineup for **every remaining game day of the season** in one click.
+A tool that automatically sets your NBA Fantasy Basketball lineup. It operates in two modes:
+1. **Chrome Extension (Manual Mode):** Submits optimal starters for **every remaining game day of the season** in one click.
+2. **24/7 Bot Server (Automated Mode):** A local Node.js server that runs continuously in the background. It wakes up 5 minutes before the first game of each day and perfectly adjusts your active roster based on the absolute latest injury reports and IR assignments.
 
-It uses this priority order for each day:
+The engine uses this priority order for each day:
 1. **Healthy + Has game** — always starts
 2. **Injured + Has game** — starts if a healthy player can't fill the slot
 3. **Healthy + No game** — benched
@@ -12,111 +14,68 @@ Tiebreaker within each tier: projected points. "Injured" means **OUT only** — 
 
 ---
 
-## Requirements
+## Installation 
 
-- **Google Chrome** (or any Chromium browser like Brave, Edge)
-- An **ESPN Fantasy Basketball** account
-- A **public or private league** — you must be a member with an active roster
-
----
-
-## Installation (no coding required)
-
-### Step 1 — Download the extension
-
+### Step 1 — Download the code
 1. Go to **[https://github.com/mchen04/ESPN_Season_Lineup_Setup](https://github.com/mchen04/ESPN_Season_Lineup_Setup)**
 2. Click the green **`<> Code`** button
 3. Click **`Download ZIP`**
-4. Once downloaded, **unzip the folder** (double-click the `.zip` file)
-   - On Mac: it extracts automatically to the same folder
-   - On Windows: right-click → "Extract All"
-5. Remember where you saved the unzipped folder — you'll need it in Step 3
+4. Once downloaded, **unzip the folder**.
 
-### Step 2 — Enable Developer Mode in Chrome
-
+### Step 2 — Load the Extension in Chrome
 1. Open Chrome and go to: **`chrome://extensions`**
-   (paste that directly into the address bar and press Enter)
-2. In the **top-right corner**, toggle on **"Developer mode"**
-
-   ![Developer mode toggle in top-right of chrome://extensions](https://i.imgur.com/placeholder-devmode.png)
-
-### Step 3 — Load the extension
-
-1. Click **"Load unpacked"** (appears after enabling Developer mode)
-2. A file picker opens — navigate to the unzipped folder you saved in Step 1
-3. Select the folder (the one that contains `manifest.json`) and click **Open**
-4. The extension appears in your list — you should see **"ESPN Season Lineup Setup"**
-
-### Step 4 — Pin the extension (optional but recommended)
-
-1. Click the **puzzle piece icon** (🧩) in the Chrome toolbar
-2. Find **ESPN Season Lineup Setup** and click the **pin icon** next to it
-3. The extension icon now appears permanently in your toolbar
+2. In the **top-right corner**, toggle on **"Developer mode"**.
+3. Click **"Load unpacked"** and select the unzipped folder.
 
 ---
 
-## How to use it
+## Operating Mode 1: Manual Run (Chrome Extension only)
 
-### Each time you want to set your lineup:
+1. **Log in to ESPN** at [espn.com](https://www.espn.com) if you aren't already.
+2. Navigate to your **Fantasy Basketball league page** (URL contains `leagueId=XXXXXXXX`).
+3. Click the **extension icon** in your Chrome toolbar.
+4. Click **"Set Season Lineup"**.
+   - Wait for it to finish — a progress bar shows how many days have been submitted.
+   - **Keep the popup open** until it says it's done.
 
-1. **Log in to ESPN** at [espn.com](https://www.espn.com) if you aren't already
-2. Navigate to your **Fantasy Basketball league page** — the URL should look like:
-   ```
-   https://fantasy.espn.com/basketball/league?leagueId=XXXXXXXX
-   ```
-3. Click the **extension icon** in your Chrome toolbar
-4. A popup appears — it will show:
-   - Your team name
-   - How many game days are left in the season
-   - Which players are being assigned to IR slots (if any)
-5. Click **"Set Season Lineup"**
-6. Wait for it to finish — a progress bar shows how many days have been submitted
-   - This takes about 30–60 seconds for a full season
-   - **Keep the popup open** until it says it's done
-7. When complete, you'll see how many days were submitted and how many were already optimal
+*You must re-run this manually if a player returns from injury or you make a roster move.*
 
-That's it — your lineup is set for the rest of the season!
+---
+
+## Operating Mode 2: 24/7 Automation (Bot Server + Extension)
+
+If you want the bot to manage your lineup continuously without your intervention, you can run the local Bot Server.
+
+### 1. Start the Bot Server
+You must have Node.js installed. Open a terminal in the project folder:
+```bash
+npm install
+npm start
+```
+The server runs on `http://localhost:3000` by default. Note: This terminal must stay open (or you can use a process manager like `pm2`) for the bot to run daily.
+
+### 2. Connect the Extension
+Because ESPN logins are highly protected, the bot cannot log itself in. Instead, the Chrome Extension acts as a secure bridge:
+1. Open the Chrome Extension popup.
+2. Under **"24/7 Bot Synchronizer"**, enter your bot server URL (`http://localhost:3000`).
+3. Enter a username and password (this registers you locally so no one else can control your bot). Click **Save Bot Settings**.
+4. Important: Every time you visit or log in to `fantasy.espn.com`, the extension will automatically capture your session cookies and send them to the bot server.
+
+As long as the local Bot Server is running and has received your latest cookies from the extension, it will automatically handle your lineup every day!
 
 ---
 
 ## Frequently asked questions
 
-**Do I need to run this every day?**
-No — that's the point. Run it once and it sets every remaining day automatically.
-
 **Will it mess up my IR slots?**
-No. It reads your current IR assignments and keeps injured players (status = OUT) in IR. It will not move a healthy player to IR or pull an injured player off IR on future days.
-
-**What if I make a trade or pick up a player?**
-Re-run the extension after any roster change. Click the extension icon and hit **"Set Season Lineup"** again — it recalculates everything from today forward.
+No. It reads your current IR assignments and keeps injured players (status = OUT) in IR. It will not move a healthy player to IR or pull an injured player off IR on future days. (The 24/7 Bot *will* dynamically move players in and out of IR just before game time if their status changes that day).
 
 **Does it work for private leagues?**
-Yes, as long as you're logged in to ESPN in Chrome. The extension reads your ESPN login cookies directly from the browser.
+Yes, as long as you're logged in to ESPN in Chrome. 
 
 **Why does Chrome say the extension is unverified?**
-Because it isn't published on the Chrome Web Store — you loaded it directly. This is normal for personal tools. The extension only communicates with ESPN's own servers.
-
-**The popup shows an error — what do I do?**
-- Make sure you're on your league page (URL contains `leagueId=`)
-- Make sure you're logged in to ESPN
-- Try refreshing the league page, then click the extension icon again
-
----
-
-## Updating the extension
-
-When a new version is released on GitHub:
-
-1. Download the new ZIP and unzip it (same as Step 1)
-2. Go to `chrome://extensions`
-3. Find ESPN Season Lineup Setup and click the **refresh icon** (↺), or
-4. Click **"Remove"**, then repeat Step 3 with the new folder
-
----
+Because it isn't published on the Chrome Web Store. The extension only communicates with ESPN's servers and your local Bot Server.
 
 ## Privacy
 
-This extension runs entirely in your browser. It:
-- Reads your ESPN login cookies to authenticate API requests
-- Communicates only with ESPN's fantasy API servers
-- Does not collect, store, or send your data anywhere else
+This tool runs locally on your machine. It securely reads your ESPN login cookies to authenticate API requests and does not send your data to any third-party servers.

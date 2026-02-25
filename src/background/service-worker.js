@@ -25,6 +25,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   return true; // keep channel open for async response
 });
 
+/**
+ * Main message router for incoming events from the Chrome Extension popup.
+ * Handles fetching preview specs or initiating the manual season-long setup run.
+ * @param {object} msg - The message payload
+ * @returns {Promise<object>} The response payload ({ok, ...})
+ */
 async function handleMessage(msg) {
   switch (msg.type) {
     case 'GET_PREVIEW':
@@ -66,6 +72,9 @@ async function getPreview({ leagueId, seasonYear, auth }) {
     ? (teamEntry.name || `${teamEntry.location || ''} ${teamEntry.nickname || ''}`.trim() || teamEntry.abbrev || `Team ${teamId}`)
     : `Team ${teamId}`;
 
+  // Store league context for the 24/7 background bot auth sync
+  chrome.storage.local.set({ leagueId, teamId, seasonYear });
+
   return {
     ok: true,
     teamId,
@@ -105,4 +114,57 @@ function findMyTeamId(rawLeague, swid) {
     }
   }
   return null;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Automated Token Bridge for the 24/7 Bot
+// ──────────────────────────────────────────────────────────────────────────────
+chrome.cookies.onChanged.addListener(async (changeInfo) => {
+  const { cookie, removed } = changeInfo;
+  if (removed || !cookie.domain.includes('fantasy.espn.com')) return;
+  if (cookie.name !== 'espn_s2' && cookie.name !== 'SWID') return;
+
+  syncTokensToBot();
+});
+
+/**
+ * Main syncing function to bridge local Chrome cookies exactly into the 24/7 Bot Server.
+ * Sends `espn_s2`, `SWID`, `leagueId`, `teamId`, and `seasonYear` via Basic Auth.
+ */
+async function syncTokensToBot() {
+  const [s2Cookie, swidCookie] = await Promise.all([
+    new Promise(r => chrome.cookies.get({ url: 'https://fantasy.espn.com', name: 'espn_s2' }, r)),
+    new Promise(r => chrome.cookies.get({ url: 'https://fantasy.espn.com', name: 'SWID' }, r))
+  ]);
+
+  if (!s2Cookie || !swidCookie) return;
+
+  const stored = await new Promise(r => chrome.storage.local.get(['botUrl', 'botUsername', 'botPassword', 'leagueId', 'teamId', 'seasonYear'], r));
+  if (!stored.botUrl || !stored.botUsername || !stored.botPassword) return;
+  if (!stored.leagueId || !stored.teamId || !stored.seasonYear) return;
+
+  const authHeader = 'Basic ' + btoa(`${stored.botUsername}:${stored.botPassword}`);
+  try {
+    const res = await fetch(`${stored.botUrl}/api/espn/tokens`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader
+      },
+      body: JSON.stringify({
+        swid: swidCookie.value,
+        espn_s2: s2Cookie.value,
+        leagueId: stored.leagueId,
+        teamId: stored.teamId,
+        seasonYear: stored.seasonYear
+      })
+    });
+    if (res.ok) {
+      console.log('[SW] Synced tokens to Bot successfully');
+    } else {
+      console.error('[SW] Failed to sync tokens to Bot', await res.text());
+    }
+  } catch (err) {
+    console.error('[SW] Network error syncing tokens', err);
+  }
 }
