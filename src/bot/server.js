@@ -54,6 +54,11 @@ app.post('/api/auth/verify', (req, res) => {
     try {
         const payload = decryptPayload(req.body);
         if (payload && payload.ping === 'pong') {
+            const { timestamp } = payload;
+            if (!timestamp || Math.abs(Date.now() - timestamp) > 60000) {
+                console.warn('[Security] Rejecting verify payload: Timestamp expired.');
+                return res.status(401).json({ error: 'Payload expired (possible replay attack)' });
+            }
             return res.json({ success: true, message: 'Authenticated successfully' });
         }
         res.status(401).json({ error: 'Invalid payload content' });
@@ -70,7 +75,14 @@ app.post('/api/espn/tokens', (req, res) => {
     try {
         const payload = decryptPayload(req.body);
 
-        const { swid, espn_s2, leagueId, teamId, seasonYear } = payload;
+        const { swid, espn_s2, leagueId, teamId, seasonYear, timestamp } = payload;
+
+        // Anti-Replay Attack timestamp validation (60-second window)
+        if (!timestamp || Math.abs(Date.now() - timestamp) > 60000) {
+            console.warn('[Security] Rejecting token payload: Timestamp expired or invalid. Possible replay attack.');
+            return res.status(401).json({ error: 'Payload expired (possible replay attack)' });
+        }
+
         if (!swid || !espn_s2 || !leagueId || !teamId || !seasonYear) {
             return res.status(400).json({ error: 'Missing required ESPN data fields in payload' });
         }
@@ -88,6 +100,10 @@ const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
     console.log(`[Bot Server] Security hardened server listening on port ${PORT}`);
-    // Start the background schedule after the server boots
     startScheduler();
+});
+
+app.use((err, req, res, next) => {
+    console.error("Express Global Error:", err);
+    res.status(500).send("Error: " + err.message);
 });

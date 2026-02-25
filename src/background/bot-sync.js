@@ -32,15 +32,32 @@ export async function syncTokensToBot() {
             espn_s2: s2Cookie.value,
             leagueId: stored.leagueId,
             teamId: stored.teamId,
-            seasonYear: stored.seasonYear
+            seasonYear: stored.seasonYear,
+            timestamp: Date.now()
         });
 
         const enc = new TextEncoder();
-        const keyMaterial = await crypto.subtle.digest('SHA-256', enc.encode(stored.botSecret));
-        const cryptoKey = await crypto.subtle.importKey(
+
+        // Derive key using PBKDF2
+        const baseKey = await crypto.subtle.importKey(
             'raw',
-            keyMaterial,
-            { name: 'AES-GCM' },
+            enc.encode(stored.botSecret),
+            'PBKDF2',
+            false,
+            ['deriveKey']
+        );
+
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+
+        const cryptoKey = await crypto.subtle.deriveKey(
+            {
+                name: 'PBKDF2',
+                salt: salt,
+                iterations: 300000,
+                hash: 'SHA-256'
+            },
+            baseKey,
+            { name: 'AES-GCM', length: 256 },
             false,
             ['encrypt']
         );
@@ -57,6 +74,7 @@ export async function syncTokensToBot() {
         const authTag = encryptedBytes.slice(-16);
 
         const securePayload = {
+            salt: Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join(''),
             iv: Array.from(iv).map(b => b.toString(16).padStart(2, '0')).join(''),
             ciphertext: Array.from(ciphertext).map(b => b.toString(16).padStart(2, '0')).join(''),
             authTag: Array.from(authTag).map(b => b.toString(16).padStart(2, '0')).join(''),

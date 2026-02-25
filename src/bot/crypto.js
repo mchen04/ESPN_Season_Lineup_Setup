@@ -1,25 +1,28 @@
 import crypto from 'crypto';
 
-let keyBuffer = null;
+let botSecret = null;
 
 export function initCrypto(secretKey) {
     if (!secretKey || secretKey.length < 32) {
         throw new Error('BOT_SECRET_KEY is missing or too short. Please use a secure 32+ character key.');
     }
-    // Convert string key to exactly 32 bytes for AES-256
-    keyBuffer = crypto.createHash('sha256').update(String(secretKey)).digest();
+    botSecret = String(secretKey);
 }
 
 /**
  * Decrypts an AES-256-GCM encrypted payload.
  */
 export function decryptPayload(encryptedData) {
-    if (!keyBuffer) throw new Error('Crypto module not initialized with a secret key.');
+    if (!botSecret) throw new Error('Crypto module not initialized with a secret key.');
+    if (!encryptedData.salt) throw new Error('Missing salt for key derivation.');
 
     try {
+        const salt = Buffer.from(encryptedData.salt, 'hex');
         const iv = Buffer.from(encryptedData.iv, 'hex');
         const authTag = Buffer.from(encryptedData.authTag, 'hex');
         const ciphertext = Buffer.from(encryptedData.ciphertext, 'hex');
+
+        const keyBuffer = crypto.pbkdf2Sync(botSecret, salt, 300000, 32, 'sha256');
 
         const decipher = crypto.createDecipheriv('aes-256-gcm', keyBuffer, iv);
         decipher.setAuthTag(authTag);
