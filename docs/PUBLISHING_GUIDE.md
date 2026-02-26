@@ -9,7 +9,7 @@ When submitting your extension in the Google Chrome Developer Dashboard, use the
 Your `manifest.json` requests several sensitive permissions. You must exactly describe *why* they are needed for the core functionality of the extension.
 
 ### `cookies`
-**Justification:** The extension acts as a secure bridge for a 24/7 automated companion bot. It requires the `cookies` permission to read the `espn_s2` and `SWID` tokens from `fantasy.espn.com`. These tokens are encrypted and sent to the user's companion server so the server can authenticate API requests to set the user's fantasy basketball lineups continuously.
+**Justification:** The extension acts as a secure bridge for a 24/7 automated companion bot. It requires the `cookies` permission to read the `espn_s2` and `SWID` tokens from `fantasy.espn.com`. These tokens are securely transmitted to the user's companion server so the server can authenticate API requests to set the user's fantasy basketball lineups continuously.
 
 ### `tabs`
 **Justification:** The `tabs` permission is used to identify when the user is actively viewing their ESPN Fantasy Basketball league page. This allows the extension to dynamically extract the `leagueId` from the active tab's URL without requiring manual user input. It is also used to optionally reload the active ESPN tab after the extension successfully completes a manual lineup submission so the user can immediately see the updated UI.

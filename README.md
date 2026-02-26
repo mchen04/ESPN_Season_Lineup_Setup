@@ -58,11 +58,11 @@ npm start
 The server runs on `http://localhost:3000` by default. Note: This terminal must stay open (or you can use a process manager like `pm2`) for the bot to run daily.
 
 ### 2. Connect the Extension
-Because ESPN logins are highly protected, the bot cannot log itself in. Instead, the Chrome Extension acts as a secure encrypted bridge:
+Because ESPN logins are highly protected, the bot cannot log itself in. Instead, the Chrome Extension acts as a secure bridge:
 1. Open the Chrome Extension popup.
-2. Under **"24/7 Bot Synchronizer"**, enter your bot server URL (`http://localhost:3000`).
-3. Enter your exact `BOT_SECRET_KEY` from your `.env` file into the "Server Secret Key" field. Click **Save Bot Settings**.
-4. Important: Every time you visit or log in to `fantasy.espn.com`, the extension will securely encrypt your session cookies using AES-256-GCM and send them to the bot server.
+2. Under **"24/7 Bot Synchronizer"**, enter your bot server URL (or leave default `http://localhost:3000`).
+3. Enter your assigned `licenseKey` into the "License Key" field and check the consent box. Click **Sync to Premium**.
+4. Important: Every time you visit or log in to `fantasy.espn.com`, the extension will securely capture your session cookies and send them to the associated premium bot server, provided consent is granted.
 
 As long as the local Bot Server is running and has received your latest tokens from the extension, it will automatically handle your lineup every day!
 
@@ -81,5 +81,5 @@ Because it isn't published on the Chrome Web Store. The extension only communica
 
 ## Privacy & Security
 
-This tool runs locally on your machine. It securely reads your ESPN login cookies to authenticate API requests and does not send your data to any third-party servers.
-Furthermore, local traffic between the Chrome Extension and the Bot Server is secured via **AES-256-GCM payload encryption**. Even if a malicious script or local sniffer monitored your `localhost` network traffic, your ESPN session tokens cannot be read without your secret `.env` key.
+This tool runs locally on your machine. It securely reads your ESPN login cookies to authenticate API requests and does not send your data to any third-party servers without explicit consent. 
+Local traffic between the Chrome Extension and the Bot Server relies on the local network (or HTTPS if configured on a remote server). An explicit privacy consent checkbox is required before the extension will sync any tokens.

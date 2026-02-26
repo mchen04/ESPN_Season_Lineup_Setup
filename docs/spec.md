@@ -29,10 +29,10 @@ This leaves value on the table. A player expected back in 3 days should be pre-s
 - It bulk-submits all of those lineup decisions to ESPN (via ESPN's private fantasy API)
 - User can **re-run at any time** to refresh (e.g., after a trade, pickup, or player return from injury)
 
-**Mode B: 24/7 Automation (Local Bot Server + Extension Bridge)**
+**Mode B: 24/7 Automation (Premium/Local Bot Server + Extension Bridge)**
 - A background `Node.js` server uses `node-schedule` to analyze the NBA master schedule every day at 12:01 AM.
 - Exactly 5 minutes before the earliest game, the bot evaluates the user's roster priorities and adjusts active lineup slots automatically.
-- The Chrome Extension works passively as an autonomous bridge — if the user logs into `fantasy.espn.com`, it captures their secure tokens and `POST`s them directly to the active Bot Server to maintain synchronization.
+- The Chrome Extension works passively as an autonomous bridge — provided the user enters a valid `licenseKey` and grants consent, it captures their session tokens when they log into `fantasy.espn.com` and `POST`s them directly to the companion Bot Server to maintain synchronization.
 
 ### 2. Start/Bench Decision Logic (Priority Order)
 

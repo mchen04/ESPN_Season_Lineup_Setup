@@ -28,9 +28,9 @@ Because the login flow is too difficult to automate reliably, the standard appro
 
 1. **The Extension Observer:** The Chrome extension runs in the background and observes cookies on the `fantasy.espn.com` domain.
 2. **Token Capture:** Whenever you log into ESPN Fantasy on your normal desktop browser, the extension automatically captures the active `espn_s2` and `SWID` cookies.
-3. **AES-256 Encryption:** The extension uses the Web Crypto API to encrypt these tokens using `AES-256-GCM` and a user-provided `BOT_SECRET_KEY`.
-4. **Secure Transmission:** The extension sends the encrypted ciphertext to a strict CORS-protected endpoint on the 24/7 Bot server (`POST /api/espn/tokens`).
-5. **Server Storage:** The bot server natively decrypts the payload using the same `.env` secret key and gracefully updates its persistent storage (a local `state.json` file) to keep its API requests authenticated seamlessly.
+3. **License Verification & Consent:** The extension verifies a user-provided `licenseKey` and checks that the user has explicitly granted privacy consent before proceeding.
+4. **Secure Transmission:** The extension sends the token payload to a strict CORS-protected endpoint on the 24/7 Bot server (`POST /api/espn/tokens`). Local network security or HTTPS ensures transmission safety.
+5. **Server Storage:** The bot server gracefully updates its persistent storage (a local `state.json` file) to keep its API requests authenticated seamlessly.
 
 ### Token Expiration Handling
 **The Catch:** The `espn_s2` cookie will eventually expire (often lasting several months, but forced logouts happen).
