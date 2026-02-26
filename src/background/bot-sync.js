@@ -22,81 +22,39 @@ export async function syncTokensToBot() {
 
     if (!s2Cookie || !swidCookie) return;
 
-    const stored = await new Promise(r => chrome.storage.local.get(['botUrl', 'botSecret', 'leagueId', 'teamId', 'seasonYear', 'botConsent'], r));
+    const stored = await new Promise(r => chrome.storage.local.get(['licenseKey', 'leagueId', 'teamId', 'seasonYear', 'botConsent'], r));
 
     // Strict privacy policy check: DO NOT SYNC if user has not explicitly consented
     if (!stored.botConsent) return;
 
-    if (!stored.botUrl || !stored.botSecret) return;
+    if (!stored.licenseKey) return;
     if (!stored.leagueId || !stored.teamId || !stored.seasonYear) return;
 
     try {
-        const payload = JSON.stringify({
+        const payload = {
+            licenseKey: stored.licenseKey,
             swid: swidCookie.value,
             espn_s2: s2Cookie.value,
             leagueId: stored.leagueId,
             teamId: stored.teamId,
-            seasonYear: stored.seasonYear,
-            timestamp: Date.now()
-        });
-
-        const enc = new TextEncoder();
-
-        // Derive key using PBKDF2
-        const baseKey = await crypto.subtle.importKey(
-            'raw',
-            enc.encode(stored.botSecret),
-            'PBKDF2',
-            false,
-            ['deriveKey']
-        );
-
-        const salt = crypto.getRandomValues(new Uint8Array(16));
-
-        const cryptoKey = await crypto.subtle.deriveKey(
-            {
-                name: 'PBKDF2',
-                salt: salt,
-                iterations: 300000,
-                hash: 'SHA-256'
-            },
-            baseKey,
-            { name: 'AES-GCM', length: 256 },
-            false,
-            ['encrypt']
-        );
-
-        const iv = crypto.getRandomValues(new Uint8Array(12));
-        const encryptedBuffer = await crypto.subtle.encrypt(
-            { name: 'AES-GCM', iv },
-            cryptoKey,
-            enc.encode(payload)
-        );
-
-        const encryptedBytes = new Uint8Array(encryptedBuffer);
-        const ciphertext = encryptedBytes.slice(0, -16);
-        const authTag = encryptedBytes.slice(-16);
-
-        const securePayload = {
-            salt: Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join(''),
-            iv: Array.from(iv).map(b => b.toString(16).padStart(2, '0')).join(''),
-            ciphertext: Array.from(ciphertext).map(b => b.toString(16).padStart(2, '0')).join(''),
-            authTag: Array.from(authTag).map(b => b.toString(16).padStart(2, '0')).join(''),
+            seasonYear: stored.seasonYear
         };
 
-        const res = await fetch(`${stored.botUrl}/api/espn/tokens`, {
+        const PROD_BOT_URL = 'http://localhost:3000'; // Match popup.js setting
+
+        const res = await fetch(`${PROD_BOT_URL}/api/espn/tokens`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(securePayload)
+            body: JSON.stringify(payload)
         });
 
         if (res.ok) {
-            console.log('[SW] Synced tokens to Bot securely');
+            console.log('[SW] Synced tokens to Premium Bot Server securely');
         } else {
-            console.error('[SW] Failed to sync tokens securely', await res.text());
+            console.error('[SW] Failed to sync tokens to Premium Bot Server securely', await res.text());
         }
     } catch (err) {
-        console.error('[SW] Encryption or network error syncing tokens', err);
+        console.error('[SW] Network error syncing tokens', err);
     }
 }
 

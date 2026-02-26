@@ -38,12 +38,13 @@ const el = {
   statSkipped: document.getElementById('stat-skipped'),
   doneErrors: document.getElementById('done-errors'),
   btnRerun: document.getElementById('btn-rerun'),
-  botUrl: document.getElementById('bot-url'),
-  botSecret: document.getElementById('bot-secret'),
+  licenseKey: document.getElementById('license-key'),
   botConsent: document.getElementById('bot-consent'),
   btnSaveBot: document.getElementById('btn-save-bot'),
   botStatus: document.getElementById('bot-status'),
 };
+
+const PROD_BOT_URL = 'http://localhost:3000'; // Change to actual SaaS URL later (e.g. https://api.espnfantasybot.com)
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let previewData = null; // cached from GET_PREVIEW response
@@ -85,14 +86,13 @@ let previewData = null; // cached from GET_PREVIEW response
     showError(`Failed to contact service worker: ${err.message}`);
   }
 
-  // Load Bot Settings
-  chrome.storage.local.get(['botUrl', 'botSecret', 'botConsent'], res => {
-    if (res.botUrl) el.botUrl.value = res.botUrl;
-    if (res.botSecret) el.botSecret.value = res.botSecret;
+  // Load Premium Settings
+  chrome.storage.local.get(['licenseKey', 'botConsent'], res => {
+    if (res.licenseKey) el.licenseKey.value = res.licenseKey;
     if (res.botConsent) {
       el.botConsent.checked = true;
       el.btnSaveBot.disabled = false;
-      el.btnSaveBot.textContent = 'Save Bot Settings';
+      el.btnSaveBot.textContent = 'Sync to Premium';
     }
   });
 })();
@@ -103,29 +103,50 @@ el.btnRerun.addEventListener('click', startSetup);
 
 el.botConsent?.addEventListener('change', (e) => {
   el.btnSaveBot.disabled = !e.target.checked;
-  el.btnSaveBot.textContent = e.target.checked ? 'Accept & Save Settings' : 'Requires Consent';
+  el.btnSaveBot.textContent = e.target.checked ? 'Sync to Premium' : 'Requires Consent';
 });
 
-el.btnSaveBot.addEventListener('click', () => {
+el.btnSaveBot.addEventListener('click', async () => {
   if (!el.botConsent.checked) return;
-  const botUrl = el.botUrl.value.trim();
+  const licenseKey = el.licenseKey.value.trim();
+  const botConsent = el.botConsent.checked;
 
-  if (botUrl && !botUrl.startsWith('https://') && !botUrl.startsWith('http://localhost') && !botUrl.startsWith('http://127.0.0.1')) {
+  if (!licenseKey) {
     el.botStatus.style.color = '#ef4444';
-    el.botStatus.textContent = 'Error: Bot URL must use HTTPS';
+    el.botStatus.textContent = 'Error: Please enter a License Key';
     setTimeout(() => { el.botStatus.textContent = ''; el.botStatus.style.color = ''; }, 3000);
     return;
   }
 
-  const botSecret = el.botSecret.value;
-  const botConsent = el.botConsent.checked;
+  el.botStatus.style.color = '';
+  el.botStatus.textContent = 'Verifying License...';
+  el.btnSaveBot.disabled = true;
 
-  chrome.storage.local.set({ botUrl, botSecret, botConsent }, () => {
-    el.botStatus.style.color = '';
-    el.botStatus.textContent = 'Saved settings!';
-    chrome.runtime.sendMessage({ type: 'MANUAL_SYNC_TOKENS' }).catch(() => { });
-    setTimeout(() => el.botStatus.textContent = '', 2000);
-  });
+  try {
+    const res = await fetch(`${PROD_BOT_URL}/api/auth/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ licenseKey })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Verification failed');
+    }
+
+    chrome.storage.local.set({ licenseKey, botConsent }, () => {
+      el.botStatus.style.color = '#22c55e';
+      el.botStatus.textContent = 'Premium Active! Tokens Synced.';
+      chrome.runtime.sendMessage({ type: 'MANUAL_SYNC_TOKENS' }).catch(() => { });
+      setTimeout(() => el.botStatus.textContent = '', 4000);
+    });
+  } catch (err) {
+    el.botStatus.style.color = '#ef4444';
+    el.botStatus.textContent = `Error: ${err.message}`;
+  } finally {
+    el.btnSaveBot.disabled = false;
+  }
 });
 
 /**

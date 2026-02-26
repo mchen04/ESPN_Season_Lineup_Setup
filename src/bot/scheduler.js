@@ -1,20 +1,38 @@
 import schedule from 'node-schedule';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { fetchNBADayScoreboard, fetchLeague } from '../api/espn-client.js';
-import { getTokens } from './store.js';
 import { runSeasonSetup } from '../core/submitter.js';
 import { normalizeLeague } from '../api/normalizer.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const STATE_FILE_PATH = path.resolve(__dirname, '../../state.json');
+
+function getUserState() {
+    if (!fs.existsSync(STATE_FILE_PATH)) return null;
+    try {
+        const data = fs.readFileSync(STATE_FILE_PATH, 'utf8');
+        return JSON.parse(data);
+    } catch (e) {
+        console.error('[Scheduler] Error reading state.json', e.message);
+        return null;
+    }
+}
 
 export function startScheduler() {
     // Master Scheduler: runs every day at 00:01 local server time
     schedule.scheduleJob('1 0 * * *', async () => {
         console.log('[Scheduler] Running daily master check at 12:01 AM...');
 
-        // 1. Get tokens from local secure store
-        const tokens = getTokens();
-        if (!tokens || !tokens.swid || !tokens.espn_s2 || !tokens.league_id) {
-            console.log('[Scheduler] Missing ESPN tokens or league info. Waiting for Chrome extension sync.');
+        const userState = getUserState();
+        if (!userState || !userState.swid || !userState.espn_s2) {
+            console.log('[Scheduler] No active user state with tokens found. Sleeping.');
             return;
         }
+
+        console.log(`[Scheduler] Found active user state to optimize.`);
 
         // 2. Fetch today's NBA scoreboard
         const now = new Date();
@@ -36,40 +54,41 @@ export function startScheduler() {
 
         if (optimizeTime <= new Date()) {
             console.log('[Scheduler] Game is starting soon or already started! Running optimizer immediately.');
-            runOptimizerJob(tokens);
+            runOptimizerJob(userState);
         } else {
             console.log(`[Scheduler] Scheduled optimizer for ${optimizeTime.toISOString()}`);
-            schedule.scheduleJob(optimizeTime, () => runOptimizerJob(tokens));
+            schedule.scheduleJob(optimizeTime, () => runOptimizerJob(userState));
         }
     });
 
     console.log('[Scheduler] Daily master scheduler initialized.');
 }
 
-async function runOptimizerJob(tokens) {
-    console.log('[Scheduler] Running daily lineup optimizer...');
-    try {
-        const auth = { swid: tokens.swid, espnS2: tokens.espn_s2 };
+async function runOptimizerJob(userState) {
+    console.log(`[Scheduler] Running daily lineup optimizer...`);
 
-        // Fetch league info to get the `currentScoringPeriodId`
-        const leagueRaw = await fetchLeague(tokens.league_id, tokens.season_year, auth);
+    try {
+        const auth = { swid: userState.swid, espnS2: userState.espn_s2 };
+
+        // Fetch current league mapping
+        const leagueRaw = await fetchLeague(userState.league_id, userState.season_year, auth);
         const { league } = normalizeLeague(leagueRaw);
 
         console.log(`[Scheduler] Current scoring period: ${league.currentScoringPeriodId}`);
 
-        // Run the existing season rollout script which optimizes today and future days
-        // We can just restrict it to 1 day or let it run fully (idempotent)
         const result = await runSeasonSetup({
-            leagueId: tokens.league_id,
-            teamId: tokens.team_id,
-            seasonYear: tokens.season_year,
+            leagueId: userState.league_id,
+            teamId: userState.team_id,
+            seasonYear: userState.season_year,
             currentScoringPeriodId: league.currentScoringPeriodId,
             auth,
-            onProgress: (c, t) => { } // no-op progress
+            onProgress: (c, t) => { } // headless mode
         });
 
-        console.log(`[Scheduler] Lineup optimizer finished. Submitted: ${result.submitted}, Skipped: ${result.skipped}, Errors: ${result.errors.length}`);
+        console.log(`[Scheduler] Finished lineup optimization. Submitted: ${result.submitted}, Skipped: ${result.skipped}, Errors: ${result.errors.length}`);
     } catch (err) {
-        console.error('[Scheduler] Error running lineup optimizer:', err);
+        console.error(`[Scheduler] Error running optimizer:`, err.message);
     }
+
+    console.log('\n[Scheduler] Daily optimization complete.');
 }
