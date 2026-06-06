@@ -1,7 +1,12 @@
 /**
- * Automated Token Bridge for the 24/7 Bot
- * Syncs cookies securely using Web Crypto API AES-256-GCM.
+ * Automated token bridge for the local 24/7 bot.
+ * Forwards ESPN session cookies to the bot server whenever they change, but only
+ * after the user has explicitly consented and saved a license key.
  */
+
+import { BOT_URL } from '../config.js';
+import { getESPNAuthCookies } from '../api/chrome-cookies.js';
+import { getStorage } from '../api/chrome-storage.js';
 
 chrome.cookies.onChanged.addListener(async (changeInfo) => {
     const { cookie, removed } = changeInfo;
@@ -15,24 +20,27 @@ chrome.cookies.onChanged.addListener(async (changeInfo) => {
  * Main syncing function to bridge local Chrome cookies exactly into the 24/7 Bot Server.
  */
 export async function syncTokensToBot() {
-    const [s2Cookie, swidCookie] = await Promise.all([
-        new Promise(r => chrome.cookies.get({ url: 'https://fantasy.espn.com', name: 'espn_s2' }, r)),
-        new Promise(r => chrome.cookies.get({ url: 'https://fantasy.espn.com', name: 'SWID' }, r))
-    ]);
-
+    let s2Cookie, swidCookie;
+    try {
+        ({ s2Cookie, swidCookie } = await getESPNAuthCookies());
+    } catch {
+        return; // cookie read failed (e.g. permissions) — silent on the background path
+    }
     if (!s2Cookie || !swidCookie) return;
 
-    const stored = await new Promise(r => chrome.storage.local.get(['licenseKey', 'leagueId', 'teamId', 'seasonYear', 'botConsent'], r));
+    let stored;
+    try {
+        stored = await getStorage(['licenseKey', 'leagueId', 'teamId', 'seasonYear', 'botConsent']);
+    } catch {
+        return; // storage read failed — silent on the background path
+    }
 
-    // Strict privacy policy check: DO NOT SYNC if user has not explicitly consented
+    // Privacy gate: never sync without explicit consent.
     if (!stored.botConsent) return;
-
-    if (!stored.licenseKey) return;
-    if (!stored.leagueId || !stored.teamId || !stored.seasonYear) return;
+    if (!stored.licenseKey || !stored.leagueId || !stored.teamId || !stored.seasonYear) return;
 
     try {
         const payload = {
-            licenseKey: stored.licenseKey,
             swid: swidCookie.value,
             espn_s2: s2Cookie.value,
             leagueId: stored.leagueId,
@@ -40,28 +48,16 @@ export async function syncTokensToBot() {
             seasonYear: stored.seasonYear
         };
 
-        const PROD_BOT_URL = 'http://localhost:3000'; // Match popup.js setting
-
-        const res = await fetch(`${PROD_BOT_URL}/api/espn/tokens`, {
+        const res = await fetch(`${BOT_URL}/api/espn/tokens`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 
-        if (res.ok) {
-            console.log('[SW] Synced tokens to Premium Bot Server securely');
-        } else {
-            console.error('[SW] Failed to sync tokens to Premium Bot Server securely', await res.text());
+        if (!res.ok) {
+            console.error('[SW] Failed to sync tokens to bot server', await res.text());
         }
     } catch (err) {
         console.error('[SW] Network error syncing tokens', err);
     }
 }
-
-// ── Manual Sync Trigger ───────────────────────────────────────────────────────
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (msg.type === 'MANUAL_SYNC_TOKENS') {
-        syncTokensToBot();
-        sendResponse({ ok: true });
-    }
-});

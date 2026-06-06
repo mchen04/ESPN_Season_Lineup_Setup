@@ -91,19 +91,15 @@
       style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
       <h2 style="margin-bottom: 0.5rem; font-size: 0.9rem;">24/7 Bot Synchronizer</h2>
       <div class="summary-row">
-        <input type="text" id="bot-url" placeholder="http://localhost:3000"
-          style="width:100%; padding:0.4rem; margin-bottom:0.4rem; border:1px solid var(--border); border-radius:4px; font-family:inherit;">
-      </div>
-      <div class="summary-row">
-        <input type="password" id="bot-secret" placeholder="Server Secret Key (from .env)"
+        <input type="text" id="license-key" placeholder="License Key"
           style="width:100%; padding:0.4rem; margin-bottom:0.5rem; border:1px solid var(--border); border-radius:4px; font-family:inherit;">
       </div>
       <div
         style="margin-bottom: 0.5rem; display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.8rem; line-height: 1.2; padding: 0.25rem 0;">
         <input type="checkbox" id="bot-consent" style="margin-top: 0.1rem; accent-color: var(--primary);">
         <label for="bot-consent" style="color: var(--text);">
-          <strong>Privacy Consent:</strong> This extension securely encrypts and sends your ESPN session tokens to our
-          servers to manage your lineups 24/7.
+          <strong>Privacy Consent:</strong> This extension sends your ESPN session tokens to your local bot server
+          (http://localhost:3000) so it can manage your lineups 24/7.
         </label>
       </div>
       <button id="btn-save-bot" class="btn-secondary" style="width:100%;" disabled>Accept & Save Settings</button>

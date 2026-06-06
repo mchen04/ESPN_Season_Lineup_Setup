@@ -5,11 +5,11 @@
  * {
  *   playerId, name, teamId,
  *   proTeamId,          // NBA team id (0 = free agent / none)
- *   injuryStatus,       // 'ACTIVE' | 'OUT' | 'DOUBTFUL' | 'QUESTIONABLE' | 'PROBABLE' | null
- *   lineupSlotId,       // current slot (0=PG, 20=bench, 21=IR, …)
+ *   injuryStatus,       // 'OUT' for injured (raw ESPN 'O'/'IL' folded to 'OUT'); other raw codes pass through and are treated as healthy; null when absent
+ *   lineupSlotId,       // current slot (basketball: 0=PG, 12=BENCH, 13=IR, …)
  *   eligibleSlots,      // int[]
  *   projectedPoints,    // float (0 if unavailable)
- *   estimatedReturnDate // ISO string or null
+ *   injuryDate          // injury onset date (ISO string) or null; ESPN exposes no projected return date
  * }
  *
  * LeagueSettings shape:
@@ -58,7 +58,7 @@ function extractPlayers(raw) {
       const playerId = playerData.id ?? entry.playerId;
       const name = playerData.fullName ?? `Player ${playerId}`;
       const proTeamId = playerData.proTeamId ?? 0;
-      const eligibleSlots = playerData.eligibleSlots ?? entry.playerPoolEntry?.eligibleSlots ?? [];
+      const eligibleSlots = playerData.eligibleSlots ?? poolEntry.eligibleSlots ?? [];
 
       // Injury status: only treat 'OUT' (or its variants 'O', 'IL') as injured per spec
       let injuryStatus = poolEntry.injuryStatus ?? playerData.injuryStatus ?? null;
@@ -68,7 +68,7 @@ function extractPlayers(raw) {
 
       // Projected points from onTeamRoster stats (season average)
       let projectedPoints = 0;
-      const stats = poolEntry.playerPoolEntry?.stats ?? poolEntry.stats ?? [];
+      const stats = poolEntry.stats ?? [];
       for (const s of stats) {
         if (s.statSplitTypeId === 1 && s.seasonId && s.appliedTotal != null) {
           projectedPoints = s.appliedAverage ?? s.appliedTotal ?? 0;
@@ -76,8 +76,9 @@ function extractPlayers(raw) {
         }
       }
 
-      // Return date (sometimes present as an injury detail)
-      const estimatedReturnDate = poolEntry.injuryDate ?? null;
+      // Injury onset date from the pool entry. ESPN's roster payload does not
+      // expose a projected return date, so this is the only injury-timing signal.
+      const injuryDate = poolEntry.injuryDate ?? null;
 
       players.push({
         playerId,
@@ -88,7 +89,7 @@ function extractPlayers(raw) {
         lineupSlotId: entry.lineupSlotId,
         eligibleSlots: Array.isArray(eligibleSlots) ? eligibleSlots : [],
         projectedPoints: Number(projectedPoints) || 0,
-        estimatedReturnDate,
+        injuryDate,
       });
     }
   }
@@ -123,12 +124,25 @@ export function normalizePublicSchedule(dayResults) {
     }
   }
 
-  const datesWithGames = Object.keys(dateToTeams).sort();
-  console.log(`[Normalizer] public schedule: ${datesWithGames.length} dates with games, range ${datesWithGames[0] ?? '—'}–${datesWithGames[datesWithGames.length - 1] ?? '—'}`);
-  if (datesWithGames.length > 0) {
-    const sample = datesWithGames[0];
-    console.log(`[Normalizer] sample ${sample}: teams`, [...dateToTeams[sample]]);
-  }
-
   return dateToTeams;
+}
+
+/** Filter normalized players down to a single fantasy team ("my team"). */
+export function getMyPlayers(players, teamId) {
+  return players.filter(p => p.teamId === teamId);
+}
+
+/**
+ * Resolve a team's display name from its raw ESPN team entry, with fallbacks.
+ *
+ * @param {object|undefined} teamEntry — raw ESPN team object (may be undefined)
+ * @param {number} fallbackTeamId — used when no name fields resolve
+ * @returns {string}
+ */
+export function formatTeamName(teamEntry, fallbackTeamId) {
+  if (!teamEntry) return `Team ${fallbackTeamId}`;
+  return teamEntry.name
+    || `${teamEntry.location || ''} ${teamEntry.nickname || ''}`.trim()
+    || teamEntry.abbrev
+    || `Team ${fallbackTeamId}`;
 }

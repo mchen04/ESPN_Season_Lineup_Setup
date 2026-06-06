@@ -28,7 +28,7 @@ export const SLOT = {
 };
 
 /** Active (starting) slot IDs in fill order. */
-export const ACTIVE_SLOTS = [
+const ACTIVE_SLOTS = [
   SLOT.PG,
   SLOT.SG,
   SLOT.SF,
@@ -47,9 +47,8 @@ export const ACTIVE_SLOTS = [
  * @returns {number[]}
  */
 export function buildActiveSlots(rosterSlots) {
-  const activeSlotTypes = [SLOT.PG, SLOT.SG, SLOT.SF, SLOT.PF, SLOT.C, SLOT.G, SLOT.F, SLOT.UTIL];
   const result = [];
-  for (const slotId of activeSlotTypes) {
+  for (const slotId of ACTIVE_SLOTS) {
     const count = Number(rosterSlots[slotId] ?? rosterSlots[String(slotId)] ?? 0);
     for (let i = 0; i < count; i++) result.push(slotId);
   }
@@ -59,21 +58,4 @@ export function buildActiveSlots(rosterSlots) {
 /** Returns true if the player is eligible for the given slot. */
 export function isEligibleForSlot(player, slotId) {
   return player.eligibleSlots.includes(slotId);
-}
-
-/** Human-readable slot name. */
-export function slotName(slotId) {
-  const names = {
-    [SLOT.PG]: 'PG',
-    [SLOT.SG]: 'SG',
-    [SLOT.SF]: 'SF',
-    [SLOT.PF]: 'PF',
-    [SLOT.C]: 'C',
-    [SLOT.G]: 'G',
-    [SLOT.F]: 'F',
-    [SLOT.UTIL]: 'UTIL',
-    [SLOT.BENCH]: 'Bench',
-    [SLOT.IR]: 'IR',
-  };
-  return names[slotId] ?? `Slot${slotId}`;
 }

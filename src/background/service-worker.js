@@ -3,18 +3,19 @@
  * Proxies all ESPN API fetches (cross-origin requires extension context).
  */
 
-import { fetchLeague, fetchPlayers, fetchNBADayScoreboard, submitLineup } from '../api/espn-client.js';
-import { normalizeLeague, normalizePublicSchedule } from '../api/normalizer.js';
-import { buildRemainingGameDays } from '../core/scheduler.js';
+import { fetchLeague } from '../api/espn-client.js';
+import { normalizeLeague, formatTeamName, getMyPlayers } from '../api/normalizer.js';
+import { buildRemainingGameDays, fetchScheduleWindow } from '../core/scheduler.js';
 import { assignIRSlots } from '../core/ir-assigner.js';
 import { runSeasonSetup } from '../core/submitter.js';
-import './bot-sync.js'; // Initializes the token bridge listener
+import { setStorage } from '../api/chrome-storage.js';
+import { syncTokensToBot } from './bot-sync.js'; // also registers the cookie-change token bridge
 
 let progressPort = null;
 chrome.runtime.onConnect.addListener(port => {
   if (port.name === 'lineup-progress') {
     progressPort = port;
-    port.onDisconnect.addListener(() => { progressPort = null; });
+    port.onDisconnect.addListener(() => { if (progressPort === port) progressPort = null; });
   }
 });
 
@@ -38,6 +39,9 @@ async function handleMessage(msg) {
       return getPreview(msg);
     case 'RUN_SETUP':
       return runSetup(msg);
+    case 'MANUAL_SYNC_TOKENS':
+      syncTokensToBot(); // fire-and-forget; result is not awaited by the popup
+      return { ok: true };
     default:
       return { ok: false, error: `Unknown message type: ${msg.type}` };
   }
@@ -50,31 +54,19 @@ async function getPreview({ leagueId, seasonYear, auth }) {
   const teamId = findMyTeamId(raw, auth.swid);
   if (!teamId) return { ok: false, error: 'Could not find your team in this league.' };
 
-  const myPlayers = players.filter(p => p.teamId === teamId);
+  const myPlayers = getMyPlayers(players, teamId);
 
-  const today = new Date();
-  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const msPerDay = 24 * 60 * 60 * 1000;
-  const datesToFetch = Array.from({ length: 60 }, (_, i) => {
-    const d = new Date(todayMidnight.getTime() + i * msPerDay);
-    return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-  });
-  const dayRaws = await Promise.all(datesToFetch.map(d => fetchNBADayScoreboard(d)));
-  const dayResults = datesToFetch.map((dateStr, i) => ({ dateStr, raw: dayRaws[i] }));
-  const dateToTeams = normalizePublicSchedule(dayResults);
+  const dateToTeams = await fetchScheduleWindow();
   const gameDays = buildRemainingGameDays(dateToTeams, league.currentScoringPeriodId, league.finalScoringPeriodId);
 
   const irAssignments = assignIRSlots(myPlayers, league.irSlotCount);
 
-  const teamEntry = raw.teams.find(t => t.id === teamId);
-  console.log('[SW] teamEntry keys:', teamEntry ? Object.keys(teamEntry) : null);
-  console.log('[SW] teamEntry name fields:', teamEntry ? { location: teamEntry.location, nickname: teamEntry.nickname, name: teamEntry.name, abbrev: teamEntry.abbrev } : null);
-  const teamName = teamEntry
-    ? (teamEntry.name || `${teamEntry.location || ''} ${teamEntry.nickname || ''}`.trim() || teamEntry.abbrev || `Team ${teamId}`)
-    : `Team ${teamId}`;
+  const teamEntry = (raw?.teams || []).find(t => t.id === teamId);
+  const teamName = formatTeamName(teamEntry, teamId);
 
-  // Store league context for the 24/7 background bot auth sync
-  chrome.storage.local.set({ leagueId, teamId, seasonYear });
+  // Store league context for the 24/7 background bot auth sync (fire-and-forget)
+  setStorage({ leagueId, teamId, seasonYear })
+    .catch(err => console.warn('[SW] failed to store league context:', err.message));
 
   return {
     ok: true,
@@ -83,7 +75,6 @@ async function getPreview({ leagueId, seasonYear, auth }) {
     gameDayCount: gameDays.length,
     currentScoringPeriodId: league.currentScoringPeriodId,
     irAssignments,
-    injuredPlayers: myPlayers.filter(p => p.injuryStatus === 'OUT'),
   };
 }
 
@@ -98,7 +89,9 @@ async function runSetup({ leagueId, teamId, seasonYear, currentScoringPeriodId, 
       if (progressPort) {
         try {
           progressPort.postMessage({ type: 'PROGRESS', completed, total });
-        } catch (_) { /* port may be closed */ }
+        } catch {
+          progressPort = null; // popup port disconnected mid-submission — stop posting
+        }
       }
     },
   });
@@ -116,4 +109,3 @@ function findMyTeamId(rawLeague, swid) {
   }
   return null;
 }
-

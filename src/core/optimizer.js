@@ -11,7 +11,7 @@
  * DOUBTFUL / QUESTIONABLE / PROBABLE / null → healthy.
  */
 
-import { ACTIVE_SLOTS, SLOT, isEligibleForSlot } from '../utils/slot-utils.js';
+import { SLOT, isEligibleForSlot } from '../utils/slot-utils.js';
 
 /**
  * Build lineup items for a single scoring period.
@@ -20,10 +20,16 @@ import { ACTIVE_SLOTS, SLOT, isEligibleForSlot } from '../utils/slot-utils.js';
  * @param {Player[]} irPlayers      — players assigned to IR slots
  * @param {Set<number>} playingTeamIds — pro team IDs with games today
  * @param {number} scoringPeriodId
- * @param {number} teamId
+ * @param {number} currentScoringPeriodId — periods beyond this are future days (IR untouchable)
+ * @param {Map<number, number>} currentSlots — playerId → current lineupSlotId for this period
+ * @param {number[]} activeSlots — league-derived starting slots in fill order (required)
  * @returns {LineupItem[]}
  */
-export function optimizeLineup(activePlayers, irPlayers, playingTeamIds, scoringPeriodId, teamId, currentScoringPeriodId, currentSlots = new Map(), activeSlots = ACTIVE_SLOTS) {
+export function optimizeLineup(activePlayers, irPlayers, playingTeamIds, scoringPeriodId, currentScoringPeriodId, currentSlots = new Map(), activeSlots) {
+  const currentSlotOf = player => currentSlots.get(player.playerId) ?? player.lineupSlotId;
+  // ESPN rejects IR transactions on future days, so a player already in IR there is untouchable.
+  const isFutureIr = slotId => scoringPeriodId > currentScoringPeriodId && slotId === SLOT.IR;
+
   // Annotate each active player with tier
   const annotated = activePlayers.map(p => ({
     ...p,
@@ -42,13 +48,7 @@ export function optimizeLineup(activePlayers, irPlayers, playingTeamIds, scoring
   for (const slotId of activeSlots) {
     for (const player of annotated) {
       if (usedPlayerIds.has(player.playerId)) continue;
-
-      // Do not pull players off IR on future days
-      const currentSlot = currentSlots.get(player.playerId) ?? player.lineupSlotId;
-      if (scoringPeriodId > currentScoringPeriodId && currentSlot === SLOT.IR) {
-        continue; // ESPN doesn't allow touching IR status on future days
-      }
-
+      if (isFutureIr(currentSlotOf(player))) continue; // can't pull players off IR on future days
       if (!isEligibleForSlot(player, slotId)) continue;
       assignments.push({ slotId, player });
       usedPlayerIds.add(player.playerId);
@@ -64,50 +64,37 @@ export function optimizeLineup(activePlayers, irPlayers, playingTeamIds, scoring
     items.push({
       playerId: player.playerId,
       type: 'LINEUP',
-      fromLineupSlotId: currentSlots.get(player.playerId) ?? player.lineupSlotId,
+      fromLineupSlotId: currentSlotOf(player),
       toLineupSlotId: toSlotId,
     });
   }
 
   // Bench: unassigned active players
   for (const player of annotated) {
-    if (!usedPlayerIds.has(player.playerId)) {
-      const currentSlot = currentSlots.get(player.playerId) ?? player.lineupSlotId;
-
-      // Again, if they are stuck on IR on a future day, we can't bench them. They stay in IR.
-      if (scoringPeriodId > currentScoringPeriodId && currentSlot === SLOT.IR) {
-        continue;
-      }
-
-      items.push({
-        playerId: player.playerId,
-        type: 'LINEUP',
-        fromLineupSlotId: currentSlot,
-        toLineupSlotId: SLOT.BENCH,
-      });
-    }
+    if (usedPlayerIds.has(player.playerId)) continue;
+    if (isFutureIr(currentSlotOf(player))) continue; // stuck on IR for a future day — leave them there
+    items.push({
+      playerId: player.playerId,
+      type: 'LINEUP',
+      fromLineupSlotId: currentSlotOf(player),
+      toLineupSlotId: SLOT.BENCH,
+    });
   }
 
-  // IR players
-  // Only submit IR lineup moves for TODAY's period. Future periods reject IR transactions.
+  // IR players: only submit IR moves for TODAY's period. Future periods reject IR transactions.
   if (scoringPeriodId <= currentScoringPeriodId) {
     for (const player of irPlayers) {
       items.push({
         playerId: player.playerId,
         type: 'LINEUP',
-        fromLineupSlotId: currentSlots.get(player.playerId) ?? player.lineupSlotId,
+        fromLineupSlotId: currentSlotOf(player),
         toLineupSlotId: SLOT.IR,
       });
     }
   }
 
   // Filter out NO-OP moves to prevent TRAN_INVALID_SCORINGPERIOD_NOT_CURRENT on future days
-  const filtered = items.filter(item => item.fromLineupSlotId !== item.toLineupSlotId);
-  if (scoringPeriodId <= currentScoringPeriodId + 1) {
-    console.log(`[Optimizer] Period ${scoringPeriodId} pre-filter items (${items.length}):`, JSON.stringify(items));
-    console.log(`[Optimizer] Period ${scoringPeriodId} post-filter items (${filtered.length}):`, JSON.stringify(filtered));
-  }
-  return filtered;
+  return items.filter(item => item.fromLineupSlotId !== item.toLineupSlotId);
 }
 
 function computeTier(player, playingTeamIds) {

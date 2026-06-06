@@ -1,11 +1,11 @@
 /**
  * IR Slot Assignment
  *
- * Strategy: players who will be out the longest occupy IR slots,
- * freeing active roster spots for shorter-term injured players.
- *
- * Sort order: null return date (indefinitely out) → last,
- * then by return date descending (latest date first).
+ * Fills the IR slots from the pool of injured players. ESPN's payload exposes an
+ * injury onset date (not a projected return date), so injury timing is used as a
+ * proxy: players already in IR stay, then players with no injury date, then by
+ * injury date descending. NOTE: if a true return-date signal becomes available,
+ * sort by that instead to better approximate "out the longest".
  */
 
 import { SLOT } from '../utils/slot-utils.js';
@@ -16,15 +16,15 @@ import { SLOT } from '../utils/slot-utils.js';
  * @param {Player[]} players   — all rostered players for my team
  * @param {number}   irCount   — number of IR slots from league settings
  * @returns {Array<{ player: Player, assignedSlot: number }>}
- *   All injured players annotated with their slot (IR=21 or BENCH=20).
+ *   All injured players annotated with their slot (IR=13 or BENCH=12).
  */
 export function assignIRSlots(players, irCount) {
   const injured = players.filter(p => p.injuryStatus === 'OUT');
 
   // Sort:
   // 1. Players currently in IR stay in IR
-  // 2. indefinitely out (null) first
-  // 3. by return date desc (latest first)
+  // 2. no injury date (unknown timing) first
+  // 3. by injury date desc (most recently recorded first)
   const sorted = [...injured].sort((a, b) => {
     const aInIR = a.lineupSlotId === SLOT.IR;
     const bInIR = b.lineupSlotId === SLOT.IR;
@@ -32,10 +32,10 @@ export function assignIRSlots(players, irCount) {
       return aInIR ? -1 : 1;
     }
 
-    if (!a.estimatedReturnDate && !b.estimatedReturnDate) return 0;
-    if (!a.estimatedReturnDate) return -1; // null → sort to front (longest out)
-    if (!b.estimatedReturnDate) return 1;
-    return new Date(b.estimatedReturnDate) - new Date(a.estimatedReturnDate);
+    if (!a.injuryDate && !b.injuryDate) return 0;
+    if (!a.injuryDate) return -1; // no injury date → sort to front
+    if (!b.injuryDate) return 1;
+    return new Date(b.injuryDate) - new Date(a.injuryDate);
   });
 
   return sorted.map((player, i) => ({

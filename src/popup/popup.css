@@ -544,3 +544,11 @@ details[open] .chevron {
   margin-bottom: 10px;
   line-height: 1.5;
 }
+
+#bot-status.status-error {
+  color: var(--red);
+}
+
+#bot-status.status-success {
+  color: var(--green);
+}

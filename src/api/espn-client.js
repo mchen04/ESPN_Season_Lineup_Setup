@@ -49,24 +49,6 @@ export async function fetchRosterForPeriod(leagueId, seasonYear, scoringPeriodId
 }
 
 /**
- * Fetch player projection data.
- * Uses kona_player_info view with a filter for all rostered players.
- */
-export async function fetchPlayers(leagueId, seasonYear, auth, playerIds) {
-  const filter = JSON.stringify({
-    players: {
-      filterIds: { value: playerIds },
-      filterStatsForCurrentSeasonScoringPeriodId: { value: [] },
-    },
-  });
-
-  const url = `${BASE}/${seasonYear}/segments/0/leagues/${leagueId}?view=kona_player_info`;
-  return espnFetch(url, auth, {
-    headers: { 'X-Fantasy-Filter': filter },
-  });
-}
-
-/**
  * Fetch the NBA scoreboard for one calendar day from ESPN's public site API (no auth required).
  * @param {string} yyyymmdd - e.g. "20260223"
  * @returns {object|null} raw scoreboard response, or null on failure

@@ -5,12 +5,15 @@
  *   done → (re-run) → submitting → done
  */
 
-import { slotName, SLOT } from '../utils/slot-utils.js';
+import { SLOT } from '../utils/slot-utils.js';
+import { BOT_URL } from '../config.js';
+import { calculateNBASeasonYear } from '../utils/date-utils.js';
+import { escapeHtml } from '../utils/html-utils.js';
+import { getESPNAuthCookies } from '../api/chrome-cookies.js';
+import { getStorage, setStorage } from '../api/chrome-storage.js';
+import { chromePromise } from '../api/chrome-utils.js';
 
-// NBA season ends in the year after it starts (Oct → June).
-// ESPN identifies seasons by their ending year.
-const _now = new Date();
-const SEASON_YEAR = _now.getMonth() >= 9 ? _now.getFullYear() + 1 : _now.getFullYear();
+const SEASON_YEAR = calculateNBASeasonYear();
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const states = {
@@ -43,8 +46,6 @@ const el = {
   btnSaveBot: document.getElementById('btn-save-bot'),
   botStatus: document.getElementById('bot-status'),
 };
-
-const PROD_BOT_URL = 'http://localhost:3000'; // Change to actual SaaS URL later (e.g. https://api.espnfantasybot.com)
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let previewData = null; // cached from GET_PREVIEW response
@@ -87,14 +88,17 @@ let previewData = null; // cached from GET_PREVIEW response
   }
 
   // Load Premium Settings
-  chrome.storage.local.get(['licenseKey', 'botConsent'], res => {
-    if (res.licenseKey) el.licenseKey.value = res.licenseKey;
-    if (res.botConsent) {
+  try {
+    const settings = await getStorage(['licenseKey', 'botConsent']);
+    if (settings.licenseKey) el.licenseKey.value = settings.licenseKey;
+    if (settings.botConsent) {
       el.botConsent.checked = true;
       el.btnSaveBot.disabled = false;
       el.btnSaveBot.textContent = 'Sync to Premium';
     }
-  });
+  } catch (err) {
+    console.warn('[Popup] failed to load premium settings:', err.message);
+  }
 })();
 
 // ── Button handlers ───────────────────────────────────────────────────────────
@@ -106,45 +110,59 @@ el.botConsent?.addEventListener('change', (e) => {
   el.btnSaveBot.textContent = e.target.checked ? 'Sync to Premium' : 'Requires Consent';
 });
 
+let botStatusTimer;
+/** Set the bot-status line's text + state class together, auto-clearing after `autoClearMs`. */
+function setBotStatus(message, state = '', autoClearMs = 0) {
+  clearTimeout(botStatusTimer);
+  el.botStatus.textContent = message;
+  el.botStatus.classList.remove('status-error', 'status-success');
+  if (state) el.botStatus.classList.add(`status-${state}`);
+  if (autoClearMs > 0) botStatusTimer = setTimeout(() => setBotStatus(''), autoClearMs);
+}
+
 el.btnSaveBot.addEventListener('click', async () => {
   if (!el.botConsent.checked) return;
   const licenseKey = el.licenseKey.value.trim();
   const botConsent = el.botConsent.checked;
 
   if (!licenseKey) {
-    el.botStatus.style.color = '#ef4444';
-    el.botStatus.textContent = 'Error: Please enter a License Key';
-    setTimeout(() => { el.botStatus.textContent = ''; el.botStatus.style.color = ''; }, 3000);
+    setBotStatus('Error: Please enter a License Key', 'error', 3000);
     return;
   }
 
-  el.botStatus.style.color = '';
-  el.botStatus.textContent = 'Verifying License...';
+  setBotStatus('Verifying License...');
   el.btnSaveBot.disabled = true;
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
   try {
-    const res = await fetch(`${PROD_BOT_URL}/api/auth/verify`, {
+    const res = await fetch(`${BOT_URL}/api/auth/verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ licenseKey })
+      body: JSON.stringify({ licenseKey }),
+      signal: controller.signal,
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      throw new Error(data.error || 'Verification failed');
+      throw new Error(data.error || `Verification failed (HTTP ${res.status})`);
+    }
+    if (!data.success) {
+      throw new Error(data.error || 'Verification failed: unexpected server response');
     }
 
-    chrome.storage.local.set({ licenseKey, botConsent }, () => {
-      el.botStatus.style.color = '#22c55e';
-      el.botStatus.textContent = 'Premium Active! Tokens Synced.';
-      chrome.runtime.sendMessage({ type: 'MANUAL_SYNC_TOKENS' }).catch(() => { });
-      setTimeout(() => el.botStatus.textContent = '', 4000);
-    });
+    await setStorage({ licenseKey, botConsent });
+    setBotStatus('Premium Active! Tokens Synced.', 'success', 4000);
+    sendMessage({ type: 'MANUAL_SYNC_TOKENS' })
+      .catch(err => console.warn('[Popup] token-sync message delivery failed:', err.message));
   } catch (err) {
-    el.botStatus.style.color = '#ef4444';
-    el.botStatus.textContent = `Error: ${err.message}`;
+    const message = err.name === 'AbortError'
+      ? 'Verification timed out — is the bot server running?'
+      : err.message;
+    setBotStatus(`Error: ${message}`, 'error', 4000);
   } finally {
+    clearTimeout(timeout);
     el.btnSaveBot.disabled = false;
   }
 });
@@ -301,25 +319,13 @@ function showError(message) {
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 async function readAuth() {
-  const [s2Cookie, swidCookie] = await Promise.all([
-    getCookie('https://fantasy.espn.com', 'espn_s2'),
-    getCookie('https://fantasy.espn.com', 'SWID'),
-  ]);
+  const { s2Cookie, swidCookie } = await getESPNAuthCookies();
 
   if (!s2Cookie || !swidCookie) {
     throw new Error('Not logged in to ESPN. Please log in at espn.com first.');
   }
 
   return { espnS2: s2Cookie.value, swid: swidCookie.value };
-}
-
-function getCookie(url, name) {
-  return new Promise((resolve, reject) => {
-    chrome.cookies.get({ url, name }, cookie => {
-      if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
-      else resolve(cookie);
-    });
-  });
 }
 
 // ── Tab / league helpers ──────────────────────────────────────────────────────
@@ -335,19 +341,6 @@ async function getLeagueIdFromActiveTab() {
 
 // ── Messaging ─────────────────────────────────────────────────────────────────
 function sendMessage(msg) {
-  return new Promise((resolve, reject) => {
-    chrome.runtime.sendMessage(msg, response => {
-      if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
-      else resolve(response);
-    });
-  });
+  return chromePromise(cb => chrome.runtime.sendMessage(msg, cb));
 }
 
-// ── Utilities ─────────────────────────────────────────────────────────────────
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
