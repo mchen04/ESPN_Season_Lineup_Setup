@@ -1,5 +1,5 @@
 {
-  "name": "espn_season_lineup_setup",
+  "name": "espn-fantasy-lineup-bot",
   "version": "1.0.0",
   "description": "A Chrome extension that automatically sets your NBA Fantasy Basketball lineup for **every remaining game day of the season** in one click.",
   "main": "index.js",

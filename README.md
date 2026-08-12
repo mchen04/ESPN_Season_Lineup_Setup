@@ -17,7 +17,7 @@ Tiebreaker within each tier: projected points. "Injured" means **OUT only** — 
 ## Installation 
 
 ### Step 1 — Download the code
-1. Go to **[https://github.com/mchen04/ESPN_Season_Lineup_Setup](https://github.com/mchen04/ESPN_Season_Lineup_Setup)**
+1. Go to **[https://github.com/mchen04/espn-fantasy-lineup-bot](https://github.com/mchen04/espn-fantasy-lineup-bot)**
 2. Click the green **`<> Code`** button
 3. Click **`Download ZIP`**
 4. Once downloaded, **unzip the folder**.
